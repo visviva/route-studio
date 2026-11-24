@@ -117,3 +117,17 @@ export function detach(editor) {
     editors.get(editor)?.();
     editors.delete(editor);
 }
+
+export async function optimize(coordinates, loop, aspect) {
+    const worker = new Worker(new URL("./route-optimizer.js", import.meta.url), { type: "module" });
+    try {
+        return await new Promise((resolve, reject) => {
+            worker.onmessage = event => resolve(event.data);
+            worker.onerror = event => reject(new Error(event.message || "Route optimization failed."));
+            worker.onmessageerror = () => reject(new Error("The route optimizer returned an unreadable result."));
+            worker.postMessage({ coordinates, loop, aspect });
+        });
+    } finally {
+        worker.terminate();
+    }
+}

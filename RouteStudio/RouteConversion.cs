@@ -13,17 +13,14 @@ internal static class WaypointParser
         @"^\s*/(?:way|waypoint)\s+(?:\#(?<map>\d+)\s+)?(?<x>\d{1,3}(?:[\.,]\d+)?)\s+(?<y>\d{1,3}(?:[\.,]\d+)?)(?:\s+(?<name>.*))?\s*$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    public static string MoveLine(string input, int from, int to)
+    public static string ReorderLines(string input, IReadOnlyList<int> order)
     {
         // Move only waypoint text, keeping the original line endings and blank lines.
         var parts = Regex.Split(input, "(\r?\n)");
         var slots = Enumerable.Range(0, parts.Length).Where(index =>
             index % 2 == 0 && !string.IsNullOrWhiteSpace(parts[index])).ToArray();
-        var lines = slots.Select(index => parts[index]).ToList();
-        var line = lines[from];
-        lines.RemoveAt(from);
-        lines.Insert(to, line);
-        for (int i = 0; i < slots.Length; i++) parts[slots[i]] = lines[i];
+        var lines = slots.Select(index => parts[index]).ToArray();
+        for (int i = 0; i < slots.Length; i++) parts[slots[i]] = lines[order[i]];
         return string.Concat(parts);
     }
 

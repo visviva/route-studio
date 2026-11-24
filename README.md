@@ -12,6 +12,8 @@ Use **+** and **−** to zoom. When the map has focus, you can also zoom with th
 
 Use the same map ID on every line. The parser accepts decimal points and commas and supports both `/way` and `/waypoint`. In the **Order** tab, drag the waypoint handles or use the move buttons to reorder the route. The **Text** tab, map preview, and next export use the updated order.
 
+Choose a route shape and select **Optimize** to minimize straight-line map distance. **Shortest path** chooses both endpoints. **Loop** keeps the first waypoint as the start and counts the return leg, shown as a dashed line in the preview. The exported waypoint list contains each input waypoint once. The optimizer finds the exact solution for up to 14 waypoints and uses nearest neighbor and 2-opt for longer routes. Distances use the map image proportions when available.
+
 The export includes the route name and coordinates in waypoint order. The preview shows waypoint labels. Paste the `!FP1!` string into the addon's **Import** feature. The format uses CBOR byte strings, raw DEFLATE, and Base64.
 
 ## Build and development

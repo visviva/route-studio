@@ -45,6 +45,19 @@
             <div id="order-panel" role="tabpanel" aria-labelledby="order-tab" hidden="@(!_orderTab)">
                 @if (_orderTab)
                 {
+                    <div class="route-optimization">
+                        <div>
+                            <label for="route-shape">@Text["RouteShape"]</label>
+                            <select id="route-shape" @bind:get="_routeShape" @bind:set="SetRouteShape"
+                                    aria-describedby="route-shape-hint" disabled="@_optimizing">
+                                <option value="path">@Text["ShortestPath"]</option>
+                                <option value="loop">@Text["Loop"]</option>
+                            </select>
+                        </div>
+                        <button type="button" class="button primary" @onclick="OptimizeRoute"
+                                disabled="@(_points.Count < 2 || _optimizing)">@Text["Optimize"]</button>
+                    </div>
+                    <p id="route-shape-hint" class="field-note">@Text[IsLoop ? "LoopHint" : "ShortestPathHint"]</p>
                     <p class="field-note" id="waypoint-order-hint">@Text[OrderHint]</p>
                 }
                 <ol class="waypoint-order" data-revision="@_inputVersion" aria-describedby="waypoint-order-hint" hidden="@(_points.Count == 0)">
@@ -72,6 +85,9 @@
                         }
                     }
                 </ol>
+                <p id="optimization-status" class="field-note @(_optimizationStatus == "OptimizationFailed" ? "error" : "")" role="status">
+                    @(_optimizing ? Text["Optimizing"] : _optimizationStatus is { } status ? Text[status] : "")
+                </p>
             </div>
             <p id="validation" class="field-note @(_validation is null ? "valid" : "error")" role="status">@(_validation ?? (_points.Count == 0 ? Text["WaypointHint"] : Text.Format(_points.Count == 1 ? "ValidWaypoint" : "ValidWaypoints", _points.Count)))</p>
             <label for="route-name">@Text["RouteName"]</label>
@@ -90,7 +106,7 @@
             </div>
         </section>
 
-        <RouteMap Points="_points" />
+        <RouteMap Points="_points" ReturnToStart="IsLoop" @ref="_routeMap" />
     </div>
 </main>
 
@@ -108,7 +124,11 @@
     private bool _exportError;
     private bool _copied;
     private bool _orderTab;
+    private string _routeShape = "path";
+    private bool _optimizing;
+    private string? _optimizationStatus;
     private int _inputVersion;
+    private RouteMap? _routeMap;
     private ElementReference _editor;
     private ElementReference _exportField;
     private IJSObjectReference? _orderModule;
@@ -116,6 +136,7 @@
     private (int Index, int Direction)? _moveFocus;
     private IReadOnlyList<Waypoint> _points = [];
     private int? MapId => _points.Count == 0 ? null : _points[0].MapId;
+    private bool IsLoop => _routeShape == "loop";
     private string OrderHint => _validation is not null ? "OrderFixText" : _points.Count switch
     {
         0 => "OrderEmpty",
@@ -139,6 +160,7 @@
     {
         _input = value ?? "";
         _inputVersion++;
+        _optimizationStatus = null;
         InvalidateExport();
         ParseInput();
     }
@@ -159,8 +181,52 @@
     {
         if (from == to || (uint)from >= (uint)_points.Count || (uint)to >= (uint)_points.Count) return false;
 
-        SetInput(WaypointParser.MoveLine(_input, from, to));
+        var order = Enumerable.Range(0, _points.Count).ToList();
+        order.RemoveAt(from);
+        order.Insert(to, from);
+        SetInput(WaypointParser.ReorderLines(_input, order));
         return true;
+    }
+
+    private void SetRouteShape(string? shape)
+    {
+        _routeShape = shape == "loop" ? "loop" : "path";
+        _optimizationStatus = null;
+    }
+
+    private async Task OptimizeRoute()
+    {
+        if (_points.Count < 2 || _optimizing) return;
+        if (_orderModule is null)
+        {
+            _optimizationStatus = "OptimizationFailed";
+            return;
+        }
+
+        _optimizing = true;
+        _optimizationStatus = null;
+        var revision = _inputVersion;
+        try
+        {
+            var coordinates = _points.Select(point => new[] { point.X, point.Y }).ToArray();
+            var order = await _orderModule.InvokeAsync<int[]>("optimize", coordinates, IsLoop, _routeMap?.DistanceAspect ?? 1);
+            if (revision != _inputVersion) return;
+
+            if (!order.SequenceEqual(Enumerable.Range(0, _points.Count)))
+            {
+                SetInput(WaypointParser.ReorderLines(_input, order));
+                _optimizationStatus = "OptimizationComplete";
+            }
+            else
+            {
+                _optimizationStatus = "OptimizationUnchanged";
+            }
+        }
+        catch (JSException)
+        {
+            if (revision == _inputVersion) _optimizationStatus = "OptimizationFailed";
+        }
+        finally { _optimizing = false; }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

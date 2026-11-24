@@ -64,12 +64,16 @@
                     <svg class="route-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                         <polyline class="route-shadow" points="@Coordinates" vector-effect="non-scaling-stroke"></polyline>
                         <polyline points="@Coordinates" vector-effect="non-scaling-stroke"></polyline>
+                        @if (ReturnToStart && Points.Count > 2)
+                        {
+                            <polyline class="route-return" points="@ReturnCoordinates" vector-effect="non-scaling-stroke"></polyline>
+                        }
                     </svg>
                     @for (int i = 0; i < Points.Count; i++)
                     {
                         var point = Points[i];
                         var label = PointLabel(i, point);
-                        <span class="map-point @(i == 0 ? "start" : i == Points.Count - 1 ? "end" : "")"
+                        <span class="map-point @(i == 0 ? "start" : !ReturnToStart && i == Points.Count - 1 ? "end" : "")"
                               style="@FormattableString.Invariant($"left:{point.X}%;top:{point.Y}%")" title="@label" aria-label="@label"></span>
                     }
                 }
@@ -81,7 +85,7 @@
             @if (Points.Count != 0)
             {
                 <span class="legend"><span><i class="start"></i> @Text[Points.Count == 1 ? "StartAndEnd" : "Start"]</span>
-                    @if (Points.Count > 1) { <span><i class="end"></i> @Text["End"]</span> }
+                    @if (Points.Count > 1 && !ReturnToStart) { <span><i class="end"></i> @Text["End"]</span> }
                 </span>
             }
         </figcaption>
@@ -92,6 +96,10 @@
     private static readonly int[] Ticks = [0, 20, 40, 60, 80, 100];
 
     [Parameter, EditorRequired] public IReadOnlyList<Waypoint> Points { get; set; } = [];
+    [Parameter] public bool ReturnToStart { get; set; }
+
+    internal double DistanceAspect => CurrentImage is { } image && !_unavailable.Contains(image.Path)
+        ? (double)image.Width / image.Height : 1;
 
     private MapCatalog? _catalog;
     private bool _loading = true;
@@ -110,6 +118,7 @@
         System.Text.RegularExpressions.Regex.IsMatch(image.Path ?? "", @"^art/[a-zA-Z0-9_-]+\.(png|svg)$")).ToArray() ?? [];
     private MapImage? CurrentImage => _variant < Images.Length ? Images[_variant] : null;
     private string Coordinates => string.Join(" ", Points.Select(point => FormattableString.Invariant($"{point.X},{point.Y}")));
+    private string ReturnCoordinates => FormattableString.Invariant($"{Points[^1].X},{Points[^1].Y} {Points[0].X},{Points[0].Y}");
     private string Caption => _mapId switch
     {
         null => Text["MapEmpty"],
@@ -174,7 +183,7 @@
     private string PointLabel(int index, Waypoint point)
     {
         var role = Points.Count == 1 ? Text["StartAndEnd"] : index == 0 ? Text["Start"] :
-            index == Points.Count - 1 ? Text["End"] : Text.Format("Point", index + 1);
+            !ReturnToStart && index == Points.Count - 1 ? Text["End"] : Text.Format("Point", index + 1);
         return string.Create(Text.Culture, $"{role} · X {point.X} · Y {point.Y}") +
             (point.Name.Length == 0 ? "" : $" · {point.Name}");
     }

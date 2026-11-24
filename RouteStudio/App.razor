@@ -3,34 +3,26 @@
 <header class="topbar">
     <div class="shell nav">
         <a class="brand" href="./"><img src="compass.svg" alt="" width="40" height="40"><span>Route Studio<small>SC FARMING PATHS</small></span></a>
-        <div class="nav-actions">
-            <a class="nav-link" href="#kartenquellen">@Text["MapSources"] <span aria-hidden="true">↗</span></a>
-            <select id="language" aria-label="@Text["Language"]" @bind:get="Text.Preference" @bind:set="ChangeLanguage">
-                <option value="">@Text["BrowserDefault"]</option>
-                <option value="de" lang="de">Deutsch</option>
-                <option value="en" lang="en">English</option>
-                <option value="es" lang="es">Español</option>
-                <option value="it" lang="it">Italiano</option>
-                <option value="pt" lang="pt">Português</option>
-            </select>
-        </div>
+        <select id="language" aria-label="@Text["Language"]" @bind:get="Text.Preference" @bind:set="ChangeLanguage">
+            <option value="">@Text["BrowserDefault"]</option>
+            <option value="de" lang="de">Deutsch</option>
+            <option value="en" lang="en">English</option>
+            <option value="es" lang="es">Español</option>
+            <option value="it" lang="it">Italiano</option>
+            <option value="pt" lang="pt">Português</option>
+        </select>
     </div>
 </header>
 
 <main class="shell">
     <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-content">
-            <div class="eyebrow"><span></span> WORLD OF WARCRAFT · RETAIL</div>
-            <h1 id="hero-title">Route <em>Studio</em></h1>
-            <p>@Text["HeroDescription"]</p>
-        </div>
-        <a class="hero-action" href="#editor">@Text["EditWaypoints"] <span aria-hidden="true">↓</span></a>
+        <h1 id="hero-title">Route <em>Studio</em></h1>
+        <p>@Text["HeroDescription"]</p>
     </section>
 
     <dl class="metrics">
         <div><dt>@Text["Waypoints"]</dt><dd>@(_points.Count == 0 ? "—" : _points.Count.ToString("D2"))</dd></div>
         <div><dt>@Text["MapId"]</dt><dd>@(MapId is int id ? $"#{id}" : "—") @if (MapId == 2437) { <small>Zul’Aman</small> }</dd></div>
-        <div><dt>@Text["ExportCharacters"]</dt><dd>@(_output.Length == 0 ? "—" : _output.Length.ToString("N0", Text.Culture))</dd></div>
     </dl>
 
     <div class="workspace">
@@ -60,15 +52,6 @@
 
         <RouteMap Points="_points" />
     </div>
-
-    <section class="sources" id="kartenquellen" aria-labelledby="sources-heading">
-        <div><h2 id="sources-heading">@Text["MapSources"]</h2><p>@Text["SourcesDescription"]</p></div>
-        <div class="source-links">
-            <a href="https://github.com/Kruithne/wow.export" target="_blank" rel="noopener noreferrer">wow.export · @Text["ExportGameMaps"] ↗</a>
-            <a href="https://warcraft.wiki.gg/wiki/Category:Coordinate-safe_maps" target="_blank" rel="noopener noreferrer">Warcraft Wiki · @Text["CoordinateSafeMaps"] ↗</a>
-        </div>
-    </section>
-    <footer><span>Route Studio · SC Farming Paths</span><span>@Text["BrowserProcessing"]</span></footer>
 </main>
 
 @code {

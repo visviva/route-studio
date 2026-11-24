@@ -13,7 +13,7 @@ internal static class WaypointParser
         @"^\s*/(?:way|waypoint)\s+(?:\#(?<map>\d+)\s+)?(?<x>\d{1,3}(?:[\.,]\d+)?)\s+(?<y>\d{1,3}(?:[\.,]\d+)?)(?:\s+(?<name>.*))?\s*$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    public static List<Waypoint> Parse(string input)
+    public static List<Waypoint> Parse(string input, TextCatalog text)
     {
         var result = new List<Waypoint>();
         int? mapId = null;
@@ -23,22 +23,22 @@ internal static class WaypointParser
             lineNumber++;
             if (string.IsNullOrWhiteSpace(line)) continue;
             var m = LinePattern.Match(line.TrimEnd('\r'));
-            if (!m.Success) throw new FormatException($"Zeile {lineNumber}: Erwartet '/way #2437 34.39 33.04 Name'.");
+            if (!m.Success) throw new FormatException(text.Format("WaypointSyntax", lineNumber));
             if (!m.Groups["map"].Success)
-                throw new FormatException($"Zeile {lineNumber}: Karten-ID fehlt (#2437). Bitte bei jedem Punkt angeben.");
+                throw new FormatException(text.Format("MissingMapId", lineNumber));
             if (!int.TryParse(m.Groups["map"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int id) || id <= 0)
-                throw new FormatException($"Zeile {lineNumber}: Ungültige Karten-ID.");
+                throw new FormatException(text.Format("InvalidMapId", lineNumber));
             if (mapId.HasValue && mapId.Value != id)
-                throw new FormatException($"Zeile {lineNumber}: Unterschiedliche Karten-IDs ({mapId} / {id}). Bitte nur eine Zone pro Route.");
+                throw new FormatException(text.Format("MixedMapIds", lineNumber, mapId.Value, id));
             mapId = id;
             static double Coordinate(string s) => double.Parse(s.Replace(',', '.'), CultureInfo.InvariantCulture);
             double x = Coordinate(m.Groups["x"].Value), y = Coordinate(m.Groups["y"].Value);
             if (x < 0 || x > 100 || y < 0 || y > 100)
-                throw new FormatException($"Zeile {lineNumber}: X und Y müssen zwischen 0 und 100 liegen.");
+                throw new FormatException(text.Format("InvalidCoordinates", lineNumber));
             result.Add(new Waypoint(id, x, y, m.Groups["name"].Value.Trim()));
-            if (result.Count > 5000) throw new FormatException("Maximal 5000 Wegpunkte pro Route.");
+            if (result.Count > 5000) throw new FormatException(text["TooManyWaypoints"]);
         }
-        if (result.Count == 0) throw new FormatException("Keine /way-Koordinaten gefunden.");
+        if (result.Count == 0) throw new FormatException(text["NoWaypoints"]);
         return result;
     }
 }

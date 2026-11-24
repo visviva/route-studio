@@ -3,10 +3,10 @@ const full = { x: 0, y: 0, width: 1, height: 1 };
 const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
 const percent = value => value * 100 + "%";
 
-export function setMap(figure, aspect) {
+export function setMap(figure, aspect, cropHint, mapWidth) {
     let state = views.get(figure);
     if (!state) {
-        state = attach(figure);
+        state = attach(figure, cropHint, mapWidth);
         views.set(figure, state);
     }
     state.reset(aspect);
@@ -17,7 +17,7 @@ export function detach(figure) {
     views.delete(figure);
 }
 
-function attach(figure) {
+function attach(figure, cropHint, mapWidth) {
     const viewport = figure.querySelector(".map-viewport");
     const selection = figure.querySelector(".map-selection");
     const note = figure.querySelector("[data-map-note]");
@@ -25,6 +25,7 @@ function attach(figure) {
         .map(button => [button.dataset.mapAction, button]));
     const listeners = new AbortController();
     const options = { signal: listeners.signal };
+    const formatWidth = new Intl.NumberFormat(document.documentElement.lang, { style: "percent" });
     let aspect = 1;
     let crop = full;
     let view = full;
@@ -43,8 +44,8 @@ function attach(figure) {
         buttons.out.disabled = zoom <= 1.0001;
         buttons.reset.disabled = crop === full && buttons.out.disabled && !selecting;
         buttons.crop.setAttribute("aria-pressed", String(selecting));
-        note.textContent = selecting ? "Ausschnitt auf der Karte aufziehen. Esc bricht ab."
-            : crop === full && buttons.out.disabled ? "" : Math.round(100 / view.width) + " % Kartenbreite";
+        note.textContent = selecting ? cropHint
+            : crop === full && buttons.out.disabled ? "" : mapWidth.replace("{0}", formatWidth.format(1 / view.width));
     }
 
     function place(x, y, width, height) {

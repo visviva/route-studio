@@ -6,18 +6,19 @@
 <section class="panel preview" aria-labelledby="preview-heading">
     <div class="panel-heading">
         <div>
-            <h2 id="preview-heading">Kartenvorschau</h2>
+            <h2 id="preview-heading">@Text["MapPreview"]</h2>
             <p class="map-caption" role="status">@Caption</p>
         </div>
         @if (Images.Length > 1)
         {
             <div class="variant">
-                <label for="map-variant">Kartenvariante</label>
+                <label for="map-variant">@Text["MapVariant"]</label>
                 <select id="map-variant" @bind="_variant">
                     @for (int i = 0; i < Images.Length; i++)
                     {
                         var variant = Images[i];
-                        <option value="@i">@(variant.PhaseId == 0 ? "Grundphase" : $"Phase {variant.PhaseId}") · Ebene @variant.Layer · Art @variant.ArtId</option>
+                        var phase = variant.PhaseId == 0 ? Text["BasePhase"] : Text.Format("Phase", variant.PhaseId);
+                        <option value="@i">@Text.Format("VariantDetails", phase, variant.Layer, variant.ArtId)</option>
                     }
                 </select>
             </div>
@@ -31,24 +32,24 @@
         var height = image?.Height ?? 668;
     }
     <figure class="map-figure" @ref="_mapFigure">
-        <div class="map-tools" role="group" aria-label="Kartenansicht">
-            <button type="button" class="button secondary small" data-map-action="in" aria-label="Vergrößern">+</button>
-            <button type="button" class="button secondary small" data-map-action="out" aria-label="Verkleinern">−</button>
-            <button type="button" class="button secondary small" data-map-action="crop" aria-pressed="false">Zuschneiden</button>
-            <button type="button" class="button secondary small" data-map-action="reset">Ganze Karte</button>
+        <div class="map-tools" role="group" aria-label="@Text["MapView"]">
+            <button type="button" class="button secondary small" data-map-action="in" aria-label="@Text["ZoomIn"]">+</button>
+            <button type="button" class="button secondary small" data-map-action="out" aria-label="@Text["ZoomOut"]">−</button>
+            <button type="button" class="button secondary small" data-map-action="crop" aria-pressed="false">@Text["Crop"]</button>
+            <button type="button" class="button secondary small" data-map-action="reset">@Text["FullMap"]</button>
             <span class="map-tool-note" data-map-note aria-live="polite"></span>
         </div>
-        <div class="map-viewport" tabindex="0" aria-label="Kartenansicht. Plus und Minus zum Zoomen, Pfeiltasten zum Verschieben."
+        <div class="map-viewport" tabindex="0" aria-label="@Text["MapKeyboardHint"]"
              style="@($"--map-aspect:{width}/{height}")">
             <div class="map-frame @(imageUrl is null ? "map-grid" : "map-art")">
                 @if (imageUrl is not null)
                 {
                     <img @key="image!.Path" class="map-image" src="@imageUrl" width="@width" height="@height" draggable="false"
-                         alt="@($"Spielkarte: {Entry!.Name}")" @onerror="() => _unavailable.Add(image!.Path)">
+                         alt="@Text.Format("MapImageAlt", Entry!.Name)" @onerror="() => _unavailable.Add(image!.Path)">
                 }
                 else
                 {
-                    <div class="grid-labels" role="img" aria-label="Koordinatenraster von 0 bis 100, Ursprung oben links">
+                    <div class="grid-labels" role="img" aria-label="@Text["GridAlt"]">
                         @foreach (var tick in Ticks)
                         {
                             <span class="tick tick-x" style="@($"--tick:{tick}%")">@tick</span>
@@ -76,11 +77,11 @@
             <div class="map-selection" hidden></div>
         </div>
         <figcaption class="map-footer">
-            <span>@(imageUrl is not null ? $"Retail {_catalog?.Build} · {width} × {height} px" : "Koordinatenraster · 0–100")</span>
+            <span>@(imageUrl is not null ? $"Retail {_catalog?.Build} · {width} × {height} px" : Text["GridCaption"])</span>
             @if (Points.Count != 0)
             {
-                <span class="legend"><span><i class="start"></i> Start@(Points.Count == 1 ? " / Ziel" : "")</span>
-                    @if (Points.Count > 1) { <span><i class="end"></i> Ziel</span> }
+                <span class="legend"><span><i class="start"></i> @Text[Points.Count == 1 ? "StartAndEnd" : "Start"]</span>
+                    @if (Points.Count > 1) { <span><i class="end"></i> @Text["End"]</span> }
                 </span>
             }
         </figcaption>
@@ -111,15 +112,11 @@
     private string Coordinates => string.Join(" ", Points.Select(point => FormattableString.Invariant($"{point.X},{point.Y}")));
     private string Caption => _mapId switch
     {
-        null => "Gültige Wegpunkte erscheinen hier.",
-        int id when _loading => $"#{id} · Kartenkatalog wird geladen …",
-        int id when Entry is { } map => $"{map.Name} · #{id}" + (CurrentImage switch
-        {
-            { } art when _unavailable.Contains(art.Path) => " · Kartenbild nicht verfügbar",
-            not null => "",
-            _ => " · Kartenbild nicht verfügbar"
-        }),
-        int id => $"#{id} · Kartenbild nicht verfügbar"
+        null => Text["MapEmpty"],
+        int id when _loading => Text.Format("MapLoading", id),
+        int id when Entry is { } map => $"{map.Name} · #{id}" +
+            (ImageUrl(CurrentImage) is null ? $" · {Text["MapUnavailable"]}" : ""),
+        int id => $"#{id} · {Text["MapUnavailable"]}"
     };
 
     protected override async Task OnInitializedAsync()
@@ -151,7 +148,8 @@
             if (!_disposed && _viewportKey != viewKey)
             {
                 _viewportKey = viewKey;
-                await _viewportModule.InvokeVoidAsync("setMap", _mapFigure, (double)(view?.Width ?? 1002) / (view?.Height ?? 668));
+                await _viewportModule.InvokeVoidAsync("setMap", _mapFigure,
+                    (double)(view?.Width ?? 1002) / (view?.Height ?? 668), Text["CropHint"], Text["MapWidth"]);
             }
         }
         catch (JSException) { }
@@ -176,8 +174,9 @@
 
     private string PointLabel(int index, Waypoint point)
     {
-        var role = Points.Count == 1 ? "Start / Ziel" : index == 0 ? "Start" : index == Points.Count - 1 ? "Ziel" : $"Punkt {index + 1}";
-        return FormattableString.Invariant($"{role} · X {point.X}, Y {point.Y}") +
+        var role = Points.Count == 1 ? Text["StartAndEnd"] : index == 0 ? Text["Start"] :
+            index == Points.Count - 1 ? Text["End"] : Text.Format("Point", index + 1);
+        return $"{role} · X {point.X} · Y {point.Y}" +
             (point.Name.Length == 0 ? "" : $" · {point.Name}");
     }
 }

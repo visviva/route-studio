@@ -3,7 +3,7 @@
 <header class="topbar">
     <div class="shell nav">
         <a class="brand" href="./"><img src="compass.svg" alt="" width="40" height="40"><span>Route Studio<small>SC FARMING PATHS</small></span></a>
-        <a class="nav-link" href="#kartenquellen">Kartenquellen <span aria-hidden="true">↗</span></a>
+        <a class="nav-link" href="#kartenquellen">@Text["MapSources"] <span aria-hidden="true">↗</span></a>
     </div>
 </header>
 
@@ -12,39 +12,39 @@
         <div class="hero-content">
             <div class="eyebrow"><span></span> WORLD OF WARCRAFT · RETAIL</div>
             <h1 id="hero-title">Route <em>Studio</em></h1>
-            <p>Wegpunkte einfügen, Route auf der Karte prüfen und für SC Farming Paths exportieren.</p>
+            <p>@Text["HeroDescription"]</p>
         </div>
-        <a class="hero-action" href="#editor">Wegpunkte bearbeiten <span aria-hidden="true">↓</span></a>
+        <a class="hero-action" href="#editor">@Text["EditWaypoints"] <span aria-hidden="true">↓</span></a>
     </section>
 
     <dl class="metrics">
-        <div><dt>Wegpunkte</dt><dd>@(_points.Count == 0 ? "—" : _points.Count.ToString("D2"))</dd></div>
-        <div><dt>Karten-ID</dt><dd>@(MapId is int id ? $"#{id}" : "—") @if (MapId == 2437) { <small>Zul’Aman</small> }</dd></div>
-        <div><dt>Exportzeichen</dt><dd>@(_output.Length == 0 ? "—" : _output.Length.ToString("N0", German))</dd></div>
+        <div><dt>@Text["Waypoints"]</dt><dd>@(_points.Count == 0 ? "—" : _points.Count.ToString("D2"))</dd></div>
+        <div><dt>@Text["MapId"]</dt><dd>@(MapId is int id ? $"#{id}" : "—") @if (MapId == 2437) { <small>Zul’Aman</small> }</dd></div>
+        <div><dt>@Text["ExportCharacters"]</dt><dd>@(_output.Length == 0 ? "—" : _output.Length.ToString("N0"))</dd></div>
     </dl>
 
     <div class="workspace">
         <section class="panel editor" id="editor" aria-labelledby="editor-heading">
             <div class="panel-heading">
-                <h2 id="editor-heading">Wegpunkte</h2>
-                <button class="button secondary small" @onclick="LoadExample">Beispiel laden</button>
+                <h2 id="editor-heading">@Text["Waypoints"]</h2>
+                <button class="button secondary small" @onclick="LoadExample">@Text["LoadExample"]</button>
             </div>
             <label for="waypoints">TomTom / Wowhead</label>
             <textarea id="waypoints" spellcheck="false" aria-describedby="validation" aria-invalid="@(_validation is not null ? "true" : "false")" @bind:get="_input" @bind:set="SetInput" @bind:event="oninput" placeholder="/way #2437 34.39 33.04 Necrohexxer Raz'ka"></textarea>
-            <p id="validation" class="field-note @(_validation is null ? "valid" : "error")" role="status">@(_validation ?? (_points.Count == 0 ? "Eine Zeile pro Wegpunkt, jeweils mit Karten-ID." : $"{_points.Count} gültige Wegpunkte"))</p>
-            <label for="route-name">Routenname</label>
+            <p id="validation" class="field-note @(_validation is null ? "valid" : "error")" role="status">@(_validation ?? (_points.Count == 0 ? Text["WaypointHint"] : Text.Format(_points.Count == 1 ? "ValidWaypoint" : "ValidWaypoints", _points.Count)))</p>
+            <label for="route-name">@Text["RouteName"]</label>
             <input id="route-name" type="text" @bind:get="_name" @bind:set="SetName" @bind:event="oninput">
             <div class="actions">
-                <button class="button primary" @onclick="ConvertRoute" disabled="@(_points.Count == 0)"><span aria-hidden="true">↗</span> Route exportieren</button>
-                <button class="button quiet" @onclick="Clear" disabled="@(string.IsNullOrEmpty(_input))">Leeren</button>
+                <button class="button primary" @onclick="ConvertRoute" disabled="@(_points.Count == 0)"><span aria-hidden="true">↗</span> @Text["ExportRoute"]</button>
+                <button class="button quiet" @onclick="Clear" disabled="@(string.IsNullOrEmpty(_input))">@Text["Clear"]</button>
             </div>
             <div class="export">
                 <div class="panel-heading">
-                    <label for="export-string">Importstring</label>
-                    <button class="button secondary small" disabled="@(_output.Length == 0)" @onclick="CopyExport">@(_copied ? "Kopiert" : "Kopieren")</button>
+                    <label for="export-string">@Text["ImportString"]</label>
+                    <button class="button secondary small" disabled="@(_output.Length == 0)" @onclick="CopyExport">@(_copied ? Text["Copied"] : Text["Copy"])</button>
                 </div>
                 <textarea id="export-string" @ref="_exportField" readonly spellcheck="false" value="@_output" placeholder="!FP1! …"></textarea>
-                <p class="field-note @(_exportError ? "error" : "")" role="status">@(_feedback ?? "In SC Farming Paths unter Import einfügen.")</p>
+                <p class="field-note @(_exportError ? "error" : "")" role="status">@(_feedback ?? Text["ImportHint"])</p>
             </div>
         </section>
 
@@ -52,13 +52,13 @@
     </div>
 
     <section class="sources" id="kartenquellen" aria-labelledby="sources-heading">
-        <div><h2 id="sources-heading">Kartenquellen</h2><p>Für die Vorschau eignet sich die vollständige, unbeschnittene Zonenkarte der jeweiligen UI-Map-ID. Die Beispielroute liegt in Zul’Aman (#2437).</p></div>
+        <div><h2 id="sources-heading">@Text["MapSources"]</h2><p>@Text["SourcesDescription"]</p></div>
         <div class="source-links">
-            <a href="https://github.com/Kruithne/wow.export" target="_blank" rel="noopener noreferrer">wow.export · Spielkarten exportieren ↗</a>
-            <a href="https://warcraft.wiki.gg/wiki/Category:Coordinate-safe_maps" target="_blank" rel="noopener noreferrer">Warcraft Wiki · Karten mit passenden Koordinaten ↗</a>
+            <a href="https://github.com/Kruithne/wow.export" target="_blank" rel="noopener noreferrer">wow.export · @Text["ExportGameMaps"] ↗</a>
+            <a href="https://warcraft.wiki.gg/wiki/Category:Coordinate-safe_maps" target="_blank" rel="noopener noreferrer">Warcraft Wiki · @Text["CoordinateSafeMaps"] ↗</a>
         </div>
     </section>
-    <footer><span>Route Studio · SC Farming Paths</span><span>Verarbeitung im Browser</span></footer>
+    <footer><span>Route Studio · SC Farming Paths</span><span>@Text["BrowserProcessing"]</span></footer>
 </main>
 
 @code {
@@ -67,17 +67,18 @@
         /way #2437 51.84 72.92 Skullcrusher Harak
         /way #2437 50.86 65.17 Mrrlokk
         """;
-    private static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
-    private string _input = Example;
-    private string _name = "Zul’Aman – Seltene Gegner";
+    private string _input = "";
+    private string _name = "";
     private string _output = "";
     private string? _validation;
     private string? _feedback;
     private bool _exportError;
     private bool _copied;
     private ElementReference _exportField;
-    private IReadOnlyList<Waypoint> _points = WaypointParser.Parse(Example);
+    private IReadOnlyList<Waypoint> _points = [];
     private int? MapId => _points.Count == 0 ? null : _points[0].MapId;
+
+    protected override void OnInitialized() => LoadExample();
 
     private void SetInput(string? value)
     {
@@ -87,7 +88,7 @@
         _validation = null;
         if (string.IsNullOrWhiteSpace(value)) return;
 
-        try { _points = WaypointParser.Parse(value); }
+        try { _points = WaypointParser.Parse(value, Text); }
         catch (FormatException error) { _validation = error.Message; }
     }
 
@@ -99,7 +100,7 @@
 
     private void LoadExample()
     {
-        _name = "Zul’Aman – Seltene Gegner";
+        _name = Text["ExampleRouteName"];
         SetInput(Example);
     }
 
@@ -122,12 +123,12 @@
         if (name.Length == 0 || System.Text.Encoding.UTF8.GetByteCount(name) > 200)
         {
             _exportError = true;
-            _feedback = name.Length == 0 ? "Bitte einen Routennamen eingeben." : "Der Routenname darf höchstens 200 UTF-8-Bytes umfassen.";
+            _feedback = Text[name.Length == 0 ? "NameRequired" : "NameTooLong"];
             return;
         }
 
         _output = FarmingPathsCodec.Encode(_points, name);
-        _feedback = "Der Importstring ist bereit.";
+        _feedback = Text["ExportReady"];
     }
 
     private async Task CopyExport()
@@ -137,13 +138,13 @@
         try { success = await JS.InvokeAsync<bool>("routeStudio.copyExport", _exportField); }
         catch (JSException)
         {
-            _feedback = "Kopieren fehlgeschlagen. Bitte den Importstring manuell kopieren.";
+            _feedback = Text["CopyFailed"];
             return;
         }
         if (current != _output) return;
 
         _copied = success;
-        _feedback = success ? "Importstring kopiert." : "Importstring ausgewählt. Bitte manuell kopieren.";
+        _feedback = Text[success ? "ExportCopied" : "ExportSelected"];
     }
 }
 

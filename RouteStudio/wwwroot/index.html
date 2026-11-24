@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#101616">
-    <meta name="description" content="World-of-Warcraft-Wegpunkte für SC Farming Paths konvertieren und auf einer Karte ansehen.">
+    <meta name="description" content="Convert World of Warcraft waypoints for SC Farming Paths and preview them on a map.">
     <base href="/">
     <link rel="icon" type="image/svg+xml" href="compass.svg">
     <link rel="stylesheet" href="studio.css">
@@ -14,14 +14,15 @@
     <div id="app">
         <div class="boot-screen" role="status">
             <img src="compass.svg" alt="" width="42" height="42">
-            <p>Route Studio wird geladen …</p>
+            <p data-text="Loading">Loading Route Studio…</p>
         </div>
     </div>
     <div id="blazor-error-ui" role="alert">
-        Route Studio konnte nicht weiter ausgeführt werden. <a href="" class="reload">Neu laden</a>
+        <span data-text="StartupError">Route Studio stopped running.</span> <a href="" class="reload" data-text="Reload">Reload</a>
     </div>
-    <noscript>Route Studio benötigt JavaScript und WebAssembly.</noscript>
+    <noscript>Route Studio requires JavaScript and WebAssembly.</noscript>
+    <script src="text-catalog.js"></script>
+    <script src="_framework/blazor.webassembly.js" autostart="false"></script>
     <script src="studio.js"></script>
-    <script src="_framework/blazor.webassembly.js"></script>
 </body>
 </html>

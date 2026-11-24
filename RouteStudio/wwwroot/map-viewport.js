@@ -3,10 +3,10 @@ const full = { x: 0, y: 0, width: 1, height: 1 };
 const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
 const percent = value => value * 100 + "%";
 
-export function setMap(figure, aspect, cropHint, mapWidth) {
+export function setMap(figure, aspect) {
     let state = views.get(figure);
     if (!state) {
-        state = attach(figure, cropHint, mapWidth);
+        state = attach(figure);
         views.set(figure, state);
     }
     state.reset(aspect);
@@ -17,7 +17,7 @@ export function detach(figure) {
     views.delete(figure);
 }
 
-function attach(figure, cropHint, mapWidth) {
+function attach(figure) {
     const viewport = figure.querySelector(".map-viewport");
     const selection = figure.querySelector(".map-selection");
     const note = figure.querySelector("[data-map-note]");
@@ -25,7 +25,7 @@ function attach(figure, cropHint, mapWidth) {
         .map(button => [button.dataset.mapAction, button]));
     const listeners = new AbortController();
     const options = { signal: listeners.signal };
-    const formatWidth = new Intl.NumberFormat(document.documentElement.lang, { style: "percent" });
+    let formatter = new Intl.NumberFormat(document.documentElement.lang, { style: "percent" });
     let aspect = 1;
     let crop = full;
     let view = full;
@@ -44,9 +44,15 @@ function attach(figure, cropHint, mapWidth) {
         buttons.out.disabled = zoom <= 1.0001;
         buttons.reset.disabled = crop === full && buttons.out.disabled && !selecting;
         buttons.crop.setAttribute("aria-pressed", String(selecting));
-        note.textContent = selecting ? cropHint
-            : crop === full && buttons.out.disabled ? "" : mapWidth.replace("{0}", formatWidth.format(1 / view.width));
+        const messages = window.routeStudio.getLocalization().messages;
+        note.textContent = selecting ? messages.CropHint
+            : crop === full && buttons.out.disabled ? "" : messages.MapWidth.replace("{0}", formatter.format(1 / view.width));
     }
+
+    document.addEventListener("route-studio-language-change", () => {
+        formatter = new Intl.NumberFormat(document.documentElement.lang, { style: "percent" });
+        show();
+    }, options);
 
     function place(x, y, width, height) {
         view = {

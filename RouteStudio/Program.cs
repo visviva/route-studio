@@ -13,7 +13,7 @@ builder.Services.AddSingleton(services =>
     var js = (IJSInProcessRuntime)services.GetRequiredService<IJSRuntime>();
     try
     {
-        return new TextCatalog(js.Invoke<Dictionary<string, string>>("routeStudio.getMessages"));
+        return new TextCatalog(js.Invoke<Localization>("routeStudio.getLocalization"));
     }
     catch (JSException error)
     {

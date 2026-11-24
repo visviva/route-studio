@@ -148,8 +148,7 @@
             if (!_disposed && _viewportKey != viewKey)
             {
                 _viewportKey = viewKey;
-                await _viewportModule.InvokeVoidAsync("setMap", _mapFigure,
-                    (double)(view?.Width ?? 1002) / (view?.Height ?? 668), Text["CropHint"], Text["MapWidth"]);
+                await _viewportModule.InvokeVoidAsync("setMap", _mapFigure, (double)(view?.Width ?? 1002) / (view?.Height ?? 668));
             }
         }
         catch (JSException) { }
@@ -176,7 +175,7 @@
     {
         var role = Points.Count == 1 ? Text["StartAndEnd"] : index == 0 ? Text["Start"] :
             index == Points.Count - 1 ? Text["End"] : Text.Format("Point", index + 1);
-        return $"{role} · X {point.X} · Y {point.Y}" +
+        return string.Create(Text.Culture, $"{role} · X {point.X} · Y {point.Y}") +
             (point.Name.Length == 0 ? "" : $" · {point.Name}");
     }
 }

@@ -3,7 +3,17 @@
 <header class="topbar">
     <div class="shell nav">
         <a class="brand" href="./"><img src="compass.svg" alt="" width="40" height="40"><span>Route Studio<small>SC FARMING PATHS</small></span></a>
-        <a class="nav-link" href="#kartenquellen">@Text["MapSources"] <span aria-hidden="true">↗</span></a>
+        <div class="nav-actions">
+            <a class="nav-link" href="#kartenquellen">@Text["MapSources"] <span aria-hidden="true">↗</span></a>
+            <select id="language" aria-label="@Text["Language"]" @bind:get="Text.Preference" @bind:set="ChangeLanguage">
+                <option value="">@Text["BrowserDefault"]</option>
+                <option value="de" lang="de">Deutsch</option>
+                <option value="en" lang="en">English</option>
+                <option value="es" lang="es">Español</option>
+                <option value="it" lang="it">Italiano</option>
+                <option value="pt" lang="pt">Português</option>
+            </select>
+        </div>
     </div>
 </header>
 
@@ -20,7 +30,7 @@
     <dl class="metrics">
         <div><dt>@Text["Waypoints"]</dt><dd>@(_points.Count == 0 ? "—" : _points.Count.ToString("D2"))</dd></div>
         <div><dt>@Text["MapId"]</dt><dd>@(MapId is int id ? $"#{id}" : "—") @if (MapId == 2437) { <small>Zul’Aman</small> }</dd></div>
-        <div><dt>@Text["ExportCharacters"]</dt><dd>@(_output.Length == 0 ? "—" : _output.Length.ToString("N0"))</dd></div>
+        <div><dt>@Text["ExportCharacters"]</dt><dd>@(_output.Length == 0 ? "—" : _output.Length.ToString("N0", Text.Culture))</dd></div>
     </dl>
 
     <div class="workspace">
@@ -44,7 +54,7 @@
                     <button class="button secondary small" disabled="@(_output.Length == 0)" @onclick="CopyExport">@(_copied ? Text["Copied"] : Text["Copy"])</button>
                 </div>
                 <textarea id="export-string" @ref="_exportField" readonly spellcheck="false" value="@_output" placeholder="!FP1! …"></textarea>
-                <p class="field-note @(_exportError ? "error" : "")" role="status">@(_feedback ?? Text["ImportHint"])</p>
+                <p class="field-note @(_exportError ? "error" : "")" role="status">@Text[_feedbackKey ?? "ImportHint"]</p>
             </div>
         </section>
 
@@ -71,7 +81,7 @@
     private string _name = "";
     private string _output = "";
     private string? _validation;
-    private string? _feedback;
+    private string? _feedbackKey;
     private bool _exportError;
     private bool _copied;
     private ElementReference _exportField;
@@ -80,15 +90,30 @@
 
     protected override void OnInitialized() => LoadExample();
 
+    private async Task ChangeLanguage(string preference)
+    {
+        try
+        {
+            Text.Apply(await JS.InvokeAsync<Localization>("routeStudio.setLanguage", preference));
+            if (_validation is not null) ParseInput();
+        }
+        catch (JSException) { }
+    }
+
     private void SetInput(string? value)
     {
         _input = value ?? "";
         InvalidateExport();
+        ParseInput();
+    }
+
+    private void ParseInput()
+    {
         _points = [];
         _validation = null;
-        if (string.IsNullOrWhiteSpace(value)) return;
+        if (string.IsNullOrWhiteSpace(_input)) return;
 
-        try { _points = WaypointParser.Parse(value, Text); }
+        try { _points = WaypointParser.Parse(_input, Text); }
         catch (FormatException error) { _validation = error.Message; }
     }
 
@@ -109,7 +134,7 @@
     private void InvalidateExport()
     {
         _output = "";
-        _feedback = null;
+        _feedbackKey = null;
         _exportError = false;
         _copied = false;
     }
@@ -123,12 +148,12 @@
         if (name.Length == 0 || System.Text.Encoding.UTF8.GetByteCount(name) > 200)
         {
             _exportError = true;
-            _feedback = Text[name.Length == 0 ? "NameRequired" : "NameTooLong"];
+            _feedbackKey = name.Length == 0 ? "NameRequired" : "NameTooLong";
             return;
         }
 
         _output = FarmingPathsCodec.Encode(_points, name);
-        _feedback = Text["ExportReady"];
+        _feedbackKey = "ExportReady";
     }
 
     private async Task CopyExport()
@@ -138,13 +163,13 @@
         try { success = await JS.InvokeAsync<bool>("routeStudio.copyExport", _exportField); }
         catch (JSException)
         {
-            _feedback = Text["CopyFailed"];
+            _feedbackKey = "CopyFailed";
             return;
         }
         if (current != _output) return;
 
         _copied = success;
-        _feedback = Text[success ? "ExportCopied" : "ExportSelected"];
+        _feedbackKey = success ? "ExportCopied" : "ExportSelected";
     }
 }
 

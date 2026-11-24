@@ -22,11 +22,13 @@ button, input, select, textarea { font: inherit; }
 .shell { width: min(1320px, calc(100% - 5rem)); margin-inline: auto; }
 
 .topbar { border-bottom: 1px solid var(--line); }
-.nav, .brand, .hero, .panel-heading, .actions, .map-footer, .legend, footer {
+.nav, .nav-actions, .brand, .hero, .panel-heading, .actions, .map-footer, .legend, footer {
     display: flex;
     align-items: center;
 }
-.nav { justify-content: space-between; min-height: 74px; }
+.nav { justify-content: space-between; flex-wrap: wrap; gap: .6rem 1rem; min-height: 74px; padding-block: .65rem; }
+.nav-actions { flex-wrap: wrap; gap: .5rem .8rem; margin-inline-start: auto; }
+#language { width: auto; max-width: 100%; font-size: .8rem; padding: .35rem .5rem; }
 .brand { gap: .8rem; font-family: Georgia, serif; font-size: 1.22rem; }
 .brand small { display: block; color: var(--accent); font: 650 .62rem/1.7 system-ui, sans-serif; letter-spacing: .19em; }
 .nav-link, .hero-action { color: var(--accent); font-size: .85rem; font-weight: 650; }

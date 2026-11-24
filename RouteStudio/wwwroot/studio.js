@@ -25,6 +25,10 @@
 
     window.routeStudio = {
         getLocalization: () => localization,
+        setExampleHint(dialog, open) {
+            if (open) dialog.showModal();
+            else dialog.close();
+        },
         setLanguage(selection) {
             localization = applyLanguage(selection);
             try {

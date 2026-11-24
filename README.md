@@ -3,14 +3,26 @@
 Route Studio converts TomTom and Wowhead waypoints in the browser. The preview shows the Retail map for the supplied UI map ID and traces the route from start to finish in waypoint order. If the map is missing or its image fails to load, the route appears on a labeled coordinate grid.
 
 ```text
-/way #2437 34.39 33.04 Necrohexxer Raz'ka
-/way #2437 51.84 72.92 Skullcrusher Harak
-/way #2437 50.86 65.17 Mrrlokk
+/way #2413 51.17 45.30 1 Rhazul
+/way #2413 67.53 61.91 2 Ha'kalawe
+/way #2413 59.93 46.84 3 Queen Lashtongue
+/way #2413 65.70 32.75 4 Stumpy
+/way #2413 45.91 31.42 5 Mindrot
+/way #2413 36.59 75.16 6 Treetop
+/way #2413 27.39 71.39 7 Pterrock (cave)
+/way #2413 44.48 17.12 8 Annulus the Worldshaker
+/way #2413 68.20 39.28 9 Chironex
+/way #2413 72.63 69.26 10 Tallcap the Truthspreader
+/way #2413 64.42 47.38 11 Chlorokyll
+/way #2413 56.82 33.56 12 Serrasa
+/way #2413 40.65 42.99 13 Dracaena
+/way #2413 28.11 81.81 14 Oro'ohna
+/way #2413 39.69 60.70 15 Ahl'ua'huhi
 ```
 
 Use **+** and **−** to zoom. When the map has focus, you can also zoom with the mouse wheel or the plus and minus keys, and pan with the arrow keys. You can drag a zoomed map with a mouse or touch. Choose **Crop** and drag to select a rectangle. **Full map** resets the zoom and crop. Cropping affects the preview only. Exported coordinates always refer to the full map.
 
-Use the same map ID on every line. The parser accepts decimal points and commas and supports both `/way` and `/waypoint`. In the **Order** tab, drag the waypoint handles or use the move buttons to reorder the route. The **Text** tab, map preview, and next export use the updated order.
+Use the same map ID on every line. The parser accepts decimal points and commas and supports both `/way` and `/waypoint`. In the **Order** tab, drag the waypoint handles or use the move buttons to reorder the route. The **Text** tab, map preview, and next export use the updated order. Select **Load example** to restore the Harandar waypoints and see an optimization tip.
 
 Choose a route shape and select **Optimize** to minimize straight-line map distance. **Shortest path** chooses both endpoints. **Loop** keeps the first waypoint as the start and counts the return leg, shown as a dashed line in the preview. The exported waypoint list contains each input waypoint once. The optimizer finds the exact solution for up to 14 waypoints and uses nearest neighbor and 2-opt for longer routes. Distances use the map image proportions when available.
 
@@ -49,7 +61,7 @@ dotnet run --project MapConverter -c Release --no-build -- retail --build $build
 dotnet run --project MapConverter -c Release --no-build -- retail --build $build --db2 ".map-work/db2-$build" --wow $wow --casc-lib $casc --ids 2437,291,997,179,55 --out .map-work/demo
 ```
 
-If `cmake` is missing from `PATH`, use the `cmake.exe` installed with Visual Studio. `fetch-db2` downloads `UiMap`, `UiMapXMapArt`, `UiMapArt`, `UiMapArtStyleLayer`, `UiMapArtTile`, `WorldMapOverlay`, and `WorldMapOverlayTile`. Store each DB2 version in a separate directory. The CLI checks the requested build against `build.txt` and, for CASC, against the active `wow` product in `.build.info`. CASC uses the textures available in the installed client. The Zul’Aman map generated for the example contains German place names.
+If `cmake` is missing from `PATH`, use the `cmake.exe` installed with Visual Studio. `fetch-db2` downloads `UiMap`, `UiMapXMapArt`, `UiMapArt`, `UiMapArtStyleLayer`, `UiMapArtTile`, `WorldMapOverlay`, and `WorldMapOverlayTile`. Store each DB2 version in a separate directory. The CLI checks the requested build against `build.txt` and, for CASC, against the active `wow` product in `.build.info`. CASC uses the textures available in the installed client. The Zul’Aman map contains German place names.
 
 Use `--remote` to fetch missing files for the requested build through the Wago Tools CASC endpoint. If you omit `--wow` and `--casc-lib`, the CLI uses Wago Tools for all files. Run a single-map import to check the remote source before importing the full catalog over HTTP.
 
@@ -94,7 +106,7 @@ dotnet run --project MapConverter -c Release --no-build -- offline --build $buil
 
 The full local run read 85,199 textures from CASC. Of 1,967 UiMapIDs, 1,939 had linked map images and rendered successfully. The remaining 28 had no linked UI map. The output contained 1,765 unique PNGs and totaled **4,316,154,132 bytes** including `maps.json`. The report recorded zero failed declared layers and 12 warnings. Eleven textures in maps #179, #1804, #1888, and #2016 were smaller than their DB2 rectangles. Map #1550 also had tile data for a layer with missing dimensions. The `BkgAtlasID` for #2252 points to an Adventure Map background tile. Map #2252 was one of the 28 without map images. The referenced Retail textures were BLP raster data. SVG support was verified with a separate vector file.
 
-The static build was tested with the Zul’Aman example route (#2437), a dungeon floor in The Deadmines (#291), a micro map (#55), and the coordinate grid (#997). The Zul’Aman data confirms all three example coordinates. [Wowhead · Skullcrusher Harak](https://www.wowhead.com/npc=242025/skullcrusher-harak)
+The static build was tested with a Zul’Aman route (#2437), a dungeon floor in The Deadmines (#291), a micro map (#55), and the coordinate grid (#997). The Zul’Aman data confirms all three coordinates in that route. [Wowhead · Skullcrusher Harak](https://www.wowhead.com/npc=242025/skullcrusher-harak)
 
 ## Generate a compact map pack
 

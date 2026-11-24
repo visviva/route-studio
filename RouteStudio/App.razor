@@ -23,14 +23,14 @@
 
     <dl class="metrics">
         <div><dt>@Text["Waypoints"]</dt><dd>@(_points.Count == 0 ? "—" : _points.Count.ToString("D2"))</dd></div>
-        <div><dt>@Text["MapId"]</dt><dd>@(MapId is int id ? $"#{id}" : "—") @if (MapId == 2437) { <small>Zul’Aman</small> }</dd></div>
+        <div><dt>@Text["MapId"]</dt><dd>@(MapId is int id ? $"#{id}" : "—") @if (MapId == 2413) { <small>Harandar</small> }</dd></div>
     </dl>
 
     <div class="workspace">
         <section class="panel editor" id="editor" aria-labelledby="editor-heading" @ref="_editor">
             <div class="panel-heading">
                 <h2 id="editor-heading">@Text["Waypoints"]</h2>
-                <button class="button secondary small" @onclick="LoadExample">@Text["LoadExample"]</button>
+                <button class="button secondary small" @onclick="LoadExampleAndShowHint">@Text["LoadExample"]</button>
             </div>
             <div class="waypoint-tabs" role="tablist" aria-labelledby="editor-heading">
                 <button type="button" id="text-tab" role="tab" aria-controls="text-panel" aria-selected="@(!_orderTab ? "true" : "false")"
@@ -40,7 +40,7 @@
             </div>
             <div id="text-panel" role="tabpanel" aria-labelledby="text-tab" hidden="@_orderTab">
                 <label for="waypoints">TomTom / Wowhead</label>
-                <textarea id="waypoints" spellcheck="false" aria-describedby="validation" aria-invalid="@(_validation is not null ? "true" : "false")" @bind:get="_input" @bind:set="SetInput" @bind:event="oninput" placeholder="/way #2437 34.39 33.04 Necrohexxer Raz'ka"></textarea>
+                <textarea id="waypoints" spellcheck="false" aria-describedby="validation" aria-invalid="@(_validation is not null ? "true" : "false")" @bind:get="_input" @bind:set="SetInput" @bind:event="oninput" placeholder="/way #2413 51.17 45.30 1 Rhazul"></textarea>
             </div>
             <div id="order-panel" role="tabpanel" aria-labelledby="order-tab" hidden="@(!_orderTab)">
                 @if (_orderTab)
@@ -110,11 +110,30 @@
     </div>
 </main>
 
+<dialog class="example-hint" aria-labelledby="example-hint-title" aria-describedby="example-hint-description"
+        @ref="_exampleHint" @onclick="CloseExampleHint">
+    <h2 id="example-hint-title">@Text["ExampleHintTitle"]</h2>
+    <p id="example-hint-description">@Text["ExampleHintDescription"]</p>
+    <button type="button" class="button primary small" autofocus>@Text["DismissExampleHint"]</button>
+</dialog>
+
 @code {
     private const string Example = """
-        /way #2437 34.39 33.04 Necrohexxer Raz'ka
-        /way #2437 51.84 72.92 Skullcrusher Harak
-        /way #2437 50.86 65.17 Mrrlokk
+        /way #2413 51.17 45.30 1 Rhazul
+        /way #2413 67.53 61.91 2 Ha'kalawe
+        /way #2413 59.93 46.84 3 Queen Lashtongue
+        /way #2413 65.70 32.75 4 Stumpy
+        /way #2413 45.91 31.42 5 Mindrot
+        /way #2413 36.59 75.16 6 Treetop
+        /way #2413 27.39 71.39 7 Pterrock (cave)
+        /way #2413 44.48 17.12 8 Annulus the Worldshaker
+        /way #2413 68.20 39.28 9 Chironex
+        /way #2413 72.63 69.26 10 Tallcap the Truthspreader
+        /way #2413 64.42 47.38 11 Chlorokyll
+        /way #2413 56.82 33.56 12 Serrasa
+        /way #2413 40.65 42.99 13 Dracaena
+        /way #2413 28.11 81.81 14 Oro'ohna
+        /way #2413 39.69 60.70 15 Ahl'ua'huhi
         """;
     private string _input = "";
     private string _name = "";
@@ -131,6 +150,7 @@
     private RouteMap? _routeMap;
     private ElementReference _editor;
     private ElementReference _exportField;
+    private ElementReference _exampleHint;
     private IJSObjectReference? _orderModule;
     private DotNetObjectReference<App>? _editorReference;
     private (int Index, int Direction)? _moveFocus;
@@ -283,6 +303,20 @@
     {
         _name = Text["ExampleRouteName"];
         SetInput(Example);
+    }
+
+    private async Task LoadExampleAndShowHint()
+    {
+        LoadExample();
+        await SetExampleHint(true);
+    }
+
+    private Task CloseExampleHint() => SetExampleHint(false);
+
+    private async Task SetExampleHint(bool open)
+    {
+        try { await JS.InvokeVoidAsync("routeStudio.setExampleHint", _exampleHint, open); }
+        catch (JSException) { }
     }
 
     private void Clear() => SetInput("");

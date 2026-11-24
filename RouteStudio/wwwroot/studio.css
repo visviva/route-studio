@@ -110,6 +110,12 @@ textarea { display: block; resize: vertical; min-height: 8.8rem; font: .82rem/1.
 .export .panel-heading { align-items: center; margin-bottom: .45rem; }
 .export label, .export .field-note { margin-bottom: 0; }
 .export textarea { min-height: 4.3rem; }
+.example-hint {
+    width: min(28rem, calc(100% - 2rem)); padding: 1.35rem; border: 1px solid var(--line);
+    border-radius: 13px; color: var(--text); background: var(--panel);
+}
+.example-hint::backdrop { background: #0a100ddd; }
+.example-hint p { margin: .65rem 0 1rem; color: var(--muted); line-height: 1.55; font-size: .9rem; }
 
 .map-caption { color: var(--muted); margin: .35rem 0 0; font-size: .82rem; }
 .variant { max-width: 48%; }

@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "SCFarmingPathsConverter": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:17047;http://localhost:17048"
+    }
+  }
+}

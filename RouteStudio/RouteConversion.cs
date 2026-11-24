@@ -1,0 +1,107 @@
+using System.Globalization;
+using System.IO.Compression;
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace SCFarmingPathsConverter;
+
+public sealed record Waypoint(int MapId, double X, double Y, string Name);
+
+internal static class WaypointParser
+{
+    private static readonly Regex LinePattern = new(
+        @"^\s*/(?:way|waypoint)\s+(?:\#(?<map>\d+)\s+)?(?<x>\d{1,3}(?:[\.,]\d+)?)\s+(?<y>\d{1,3}(?:[\.,]\d+)?)(?:\s+(?<name>.*))?\s*$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    public static List<Waypoint> Parse(string input)
+    {
+        var result = new List<Waypoint>();
+        int? mapId = null;
+        var lineNumber = 0;
+        foreach (var line in input.Split('\n'))
+        {
+            lineNumber++;
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var m = LinePattern.Match(line.TrimEnd('\r'));
+            if (!m.Success) throw new FormatException($"Zeile {lineNumber}: Erwartet '/way #2437 34.39 33.04 Name'.");
+            if (!m.Groups["map"].Success)
+                throw new FormatException($"Zeile {lineNumber}: Karten-ID fehlt (#2437). Bitte bei jedem Punkt angeben.");
+            if (!int.TryParse(m.Groups["map"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out int id) || id <= 0)
+                throw new FormatException($"Zeile {lineNumber}: Ungültige Karten-ID.");
+            if (mapId.HasValue && mapId.Value != id)
+                throw new FormatException($"Zeile {lineNumber}: Unterschiedliche Karten-IDs ({mapId} / {id}). Bitte nur eine Zone pro Route.");
+            mapId = id;
+            static double Coordinate(string s) => double.Parse(s.Replace(',', '.'), CultureInfo.InvariantCulture);
+            double x = Coordinate(m.Groups["x"].Value), y = Coordinate(m.Groups["y"].Value);
+            if (x < 0 || x > 100 || y < 0 || y > 100)
+                throw new FormatException($"Zeile {lineNumber}: X und Y müssen zwischen 0 und 100 liegen.");
+            result.Add(new Waypoint(id, x, y, m.Groups["name"].Value.Trim()));
+            if (result.Count > 5000) throw new FormatException("Maximal 5000 Wegpunkte pro Route.");
+        }
+        if (result.Count == 0) throw new FormatException("Keine /way-Koordinaten gefunden.");
+        return result;
+    }
+}
+
+internal static class FarmingPathsCodec
+{
+    // Format geprüft anhand eines vom Addon erzeugten !FP1!-Exports:
+    // Base64(RAW-DEFLATE(CBOR({ h'paths': [...], h'v': 1 }))).
+    // Achtung: Die CBOR-Schlüssel und Zeichenketten sind BYTE STRINGS, keine CBOR-Text-Strings.
+    public static string Encode(IReadOnlyList<Waypoint> points, string name)
+    {
+        using var payload = new MemoryStream();
+        var w = new CborBinaryWriter(payload);
+        w.Map(2);
+        w.Bytes("paths");
+        w.Array(1);
+        w.Map(4);
+        w.Bytes("mapID"); w.Unsigned((ulong)points[0].MapId);
+        w.Bytes("name"); w.Bytes(name);
+        w.Bytes("points"); w.Array(points.Count);
+        foreach (var p in points)
+        {
+            w.Map(2);
+            w.Bytes("y"); w.Double(p.Y / 100.0);
+            w.Bytes("x"); w.Double(p.X / 100.0);
+        }
+        w.Bytes("icon"); w.Bytes(@"Interface\TargetingFrame\UI-RaidTargetingIcon_1");
+        w.Bytes("v"); w.Unsigned(1);
+
+        using var compressed = new MemoryStream();
+        using (var deflater = new DeflateStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
+            deflater.Write(payload.ToArray());
+        return "!FP1!" + Convert.ToBase64String(compressed.ToArray());
+    }
+}
+
+internal sealed class CborBinaryWriter(Stream stream)
+{
+    private void Head(int major, ulong value)
+    {
+        if (value < 24) stream.WriteByte((byte)((major << 5) | (byte)value));
+        else if (value <= byte.MaxValue) { stream.WriteByte((byte)((major << 5) | 24)); stream.WriteByte((byte)value); }
+        else if (value <= ushort.MaxValue) { stream.WriteByte((byte)((major << 5) | 25)); WriteBigEndian(value, 2); }
+        else if (value <= uint.MaxValue) { stream.WriteByte((byte)((major << 5) | 26)); WriteBigEndian(value, 4); }
+        else { stream.WriteByte((byte)((major << 5) | 27)); WriteBigEndian(value, 8); }
+    }
+    private void WriteBigEndian(ulong value, int count)
+    {
+        for (int i = count - 1; i >= 0; i--) stream.WriteByte((byte)(value >> (i * 8)));
+    }
+    public void Map(int count) => Head(5, (ulong)count);
+    public void Array(int count) => Head(4, (ulong)count);
+    public void Unsigned(ulong n) => Head(0, n);
+    public void Bytes(string text)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(text);
+        Head(2, (ulong)bytes.Length);
+        stream.Write(bytes);
+    }
+    public void Double(double number)
+    {
+        stream.WriteByte(0xfb);
+        WriteBigEndian(BitConverter.DoubleToUInt64Bits(number), 8);
+    }
+}
+

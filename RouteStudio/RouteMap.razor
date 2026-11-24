@@ -1,0 +1,183 @@
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<section class="panel preview" aria-labelledby="preview-heading">
+    <div class="panel-heading">
+        <div>
+            <h2 id="preview-heading">Kartenvorschau</h2>
+            <p class="map-caption" role="status">@Caption</p>
+        </div>
+        @if (Images.Length > 1)
+        {
+            <div class="variant">
+                <label for="map-variant">Kartenvariante</label>
+                <select id="map-variant" @bind="_variant">
+                    @for (int i = 0; i < Images.Length; i++)
+                    {
+                        var variant = Images[i];
+                        <option value="@i">@(variant.PhaseId == 0 ? "Grundphase" : $"Phase {variant.PhaseId}") · Ebene @variant.Layer · Art @variant.ArtId</option>
+                    }
+                </select>
+            </div>
+        }
+    </div>
+
+    @{
+        var image = CurrentImage;
+        var imageUrl = ImageUrl(image);
+        var width = image?.Width ?? 1002;
+        var height = image?.Height ?? 668;
+    }
+    <figure class="map-figure" @ref="_mapFigure">
+        <div class="map-tools" role="group" aria-label="Kartenansicht">
+            <button type="button" class="button secondary small" data-map-action="in" aria-label="Vergrößern">+</button>
+            <button type="button" class="button secondary small" data-map-action="out" aria-label="Verkleinern">−</button>
+            <button type="button" class="button secondary small" data-map-action="crop" aria-pressed="false">Zuschneiden</button>
+            <button type="button" class="button secondary small" data-map-action="reset">Ganze Karte</button>
+            <span class="map-tool-note" data-map-note aria-live="polite"></span>
+        </div>
+        <div class="map-viewport" tabindex="0" aria-label="Kartenansicht. Plus und Minus zum Zoomen, Pfeiltasten zum Verschieben."
+             style="@($"--map-aspect:{width}/{height}")">
+            <div class="map-frame @(imageUrl is null ? "map-grid" : "map-art")">
+                @if (imageUrl is not null)
+                {
+                    <img @key="image!.Path" class="map-image" src="@imageUrl" width="@width" height="@height" draggable="false"
+                         alt="@($"Spielkarte: {Entry!.Name}")" @onerror="() => _unavailable.Add(image!.Path)">
+                }
+                else
+                {
+                    <div class="grid-labels" role="img" aria-label="Koordinatenraster von 0 bis 100, Ursprung oben links">
+                        @foreach (var tick in Ticks)
+                        {
+                            <span class="tick tick-x" style="@($"--tick:{tick}%")">@tick</span>
+                            <span class="tick tick-y" style="@($"--tick:{tick}%")">@tick</span>
+                        }
+                        <span class="axis axis-x">X</span><span class="axis axis-y">Y</span>
+                    </div>
+                }
+
+                @if (Points.Count > 0)
+                {
+                    <svg class="route-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                        <polyline class="route-shadow" points="@Coordinates" vector-effect="non-scaling-stroke"></polyline>
+                        <polyline points="@Coordinates" vector-effect="non-scaling-stroke"></polyline>
+                    </svg>
+                    @for (int i = 0; i < Points.Count; i++)
+                    {
+                        var point = Points[i];
+                        var label = PointLabel(i, point);
+                        <span class="map-point @(i == 0 ? "start" : i == Points.Count - 1 ? "end" : "")"
+                              style="@FormattableString.Invariant($"left:{point.X}%;top:{point.Y}%")" title="@label" aria-label="@label"></span>
+                    }
+                }
+            </div>
+            <div class="map-selection" hidden></div>
+        </div>
+        <figcaption class="map-footer">
+            <span>@(imageUrl is not null ? $"Retail {_catalog?.Build} · {width} × {height} px" : "Koordinatenraster · 0–100")</span>
+            @if (Points.Count != 0)
+            {
+                <span class="legend"><span><i class="start"></i> Start@(Points.Count == 1 ? " / Ziel" : "")</span>
+                    @if (Points.Count > 1) { <span><i class="end"></i> Ziel</span> }
+                </span>
+            }
+        </figcaption>
+    </figure>
+</section>
+
+@code {
+    private static readonly int[] Ticks = [0, 20, 40, 60, 80, 100];
+
+    [Parameter, EditorRequired] public IReadOnlyList<Waypoint> Points { get; set; } = [];
+
+    private MapCatalog? _catalog;
+    private bool _loading = true;
+    private bool _disposed;
+    private ElementReference _mapFigure;
+    private IJSObjectReference? _viewportModule;
+    private Task<IJSObjectReference>? _viewportImport;
+    private string? _viewportKey;
+    private int? _mapId;
+    private int _variant;
+    private readonly HashSet<string> _unavailable = new(StringComparer.Ordinal);
+
+    private MapEntry? Entry => _mapId is int id ? _catalog?.Maps?.GetValueOrDefault(id) : null;
+    private MapImage[] Images => Entry?.Images?.Where(image =>
+        image is not null && image.Width is > 0 and <= 8192 && image.Height is > 0 and <= 8192 &&
+        System.Text.RegularExpressions.Regex.IsMatch(image.Path ?? "", @"^art/[a-zA-Z0-9_-]+\.(png|svg)$")).ToArray() ?? [];
+    private MapImage? CurrentImage => _variant < Images.Length ? Images[_variant] : null;
+    private string Coordinates => string.Join(" ", Points.Select(point => FormattableString.Invariant($"{point.X},{point.Y}")));
+    private string Caption => _mapId switch
+    {
+        null => "Gültige Wegpunkte erscheinen hier.",
+        int id when _loading => $"#{id} · Kartenkatalog wird geladen …",
+        int id when Entry is { } map => $"{map.Name} · #{id}" + (CurrentImage switch
+        {
+            { } art when _unavailable.Contains(art.Path) => " · Kartenbild nicht verfügbar",
+            not null => "",
+            _ => " · Kartenbild nicht verfügbar"
+        }),
+        int id => $"#{id} · Kartenbild nicht verfügbar"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _catalog = await Http.GetFromJsonAsync("maps/maps.json", MapCatalogJson.Default.MapCatalog); }
+        catch (Exception error) when (error is HttpRequestException or System.Text.Json.JsonException or TaskCanceledException)
+        {
+            _catalog = null;
+        }
+        finally { _loading = false; }
+    }
+
+    protected override void OnParametersSet()
+    {
+        int? next = Points.Count == 0 ? null : Points[0].MapId;
+        if (next == _mapId) return;
+
+        _mapId = next;
+        _variant = 0;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            _viewportModule ??= await (_viewportImport ??= JS.InvokeAsync<IJSObjectReference>("import", "./map-viewport.js").AsTask());
+            var view = CurrentImage;
+            string viewKey = $"{_mapId}:{view?.Path}";
+            if (!_disposed && _viewportKey != viewKey)
+            {
+                _viewportKey = viewKey;
+                await _viewportModule.InvokeVoidAsync("setMap", _mapFigure, (double)(view?.Width ?? 1002) / (view?.Height ?? 668));
+            }
+        }
+        catch (JSException) { }
+    }
+
+    private string? ImageUrl(MapImage? image) => image is null || _unavailable.Contains(image.Path)
+        ? null : $"maps/{image.Path}";
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        try
+        {
+            if (_viewportModule is not null)
+            {
+                await _viewportModule.InvokeVoidAsync("detach", _mapFigure);
+                await _viewportModule.DisposeAsync();
+            }
+        }
+        catch (JSException) { }
+    }
+
+    private string PointLabel(int index, Waypoint point)
+    {
+        var role = Points.Count == 1 ? "Start / Ziel" : index == 0 ? "Start" : index == Points.Count - 1 ? "Ziel" : $"Punkt {index + 1}";
+        return FormattableString.Invariant($"{role} · X {point.X}, Y {point.Y}") +
+            (point.Name.Length == 0 ? "" : $" · {point.Name}");
+    }
+}

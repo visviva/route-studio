@@ -1,0 +1,52 @@
+name: Deploy Route Studio to GitHub Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      map_pack_release:
+        description: Release tag containing route-studio-maps.zip
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: dotnet workload install wasm-tools
+      - name: Download the compact map pack
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAP_PACK_RELEASE: ${{ inputs.map_pack_release }}
+        run: |
+          gh release download --repo "$GITHUB_REPOSITORY" --pattern route-studio-maps.zip --output "$RUNNER_TEMP/route-studio-maps.zip" -- "$MAP_PACK_RELEASE"
+          unzip -q "$RUNNER_TEMP/route-studio-maps.zip" -d "$RUNNER_TEMP/route-studio-maps"
+      - uses: actions/configure-pages@v6
+        id: pages
+      - name: Publish Blazor static files
+        shell: pwsh
+        env:
+          PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: |
+          $mapPack = Join-Path $env:RUNNER_TEMP 'route-studio-maps'
+          ./scripts/Publish-RouteStudio.ps1 -Output publish/pages -BasePath $env:PAGES_BASE_PATH -MapPack $mapPack -Pages
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: publish/pages/wwwroot
+      - uses: actions/deploy-pages@v5
+        id: deployment

@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/RouteStudio/">
+    <Project Path="RouteStudio/SCFarmingPathsConverter.csproj" />
+  </Folder>
+  <Project Path="MapConverter/MapConverter.csproj" />
+</Solution>

@@ -1,6 +1,6 @@
 # SC Farming Paths – Route Studio
 
-Route Studio konvertiert TomTom- und Wowhead-Wegpunkte im Browser. Die Vorschau zeigt zu einer Retail-UI-Map-ID die passende Karte mit Start, Ziel und Route in Eingabereihenfolge. Wenn die Karte fehlt oder ihr Bild nicht geladen werden kann, bleibt die Route auf einem beschrifteten Koordinatenraster sichtbar.
+Route Studio converts TomTom and Wowhead waypoints in the browser. The preview shows the Retail map for the supplied UI map ID and traces the route from start to finish in waypoint order. If the map is missing or its image fails to load, the route appears on a labeled coordinate grid.
 
 ```text
 /way #2437 34.39 33.04 Necrohexxer Raz'ka
@@ -8,13 +8,15 @@ Route Studio konvertiert TomTom- und Wowhead-Wegpunkte im Browser. Die Vorschau 
 /way #2437 50.86 65.17 Mrrlokk
 ```
 
-Mit **+** und **−** lässt sich die Karte zoomen. Eine fokussierte Karte unterstützt auch Mausrad, Plus, Minus und die Pfeiltasten. Vergrößerte Karten können mit der Maus oder per Touch verschoben werden. **Zuschneiden** aktiviert eine rechteckige Auswahl per Ziehen. **Ganze Karte** setzt Zoom und Ausschnitt zurück. Der Ausschnitt gilt für die Vorschau. Die Exportkoordinaten beziehen sich weiterhin auf die vollständige Karte.
+Use **+** and **−** to zoom. When the map has focus, you can also zoom with the mouse wheel or the plus and minus keys, and pan with the arrow keys. You can drag a zoomed map with a mouse or touch. Choose **Crop** and drag to select a rectangle. **Full map** resets the zoom and crop. Cropping affects the preview only. Exported coordinates always refer to the full map.
 
-Jede Zeile braucht dieselbe Karten-ID. Dezimalpunkt und Dezimalkomma sowie `/way` und `/waypoint` werden unterstützt. Der Export enthält den Routennamen und die Koordinaten in Eingabereihenfolge. Wegpunktbeschriftungen erscheinen in der Vorschau. Das Addon übernimmt den `!FP1!`-String über seine Import-Funktion. Das bestehende Format verwendet CBOR-Byte-Strings, Raw Deflate und Base64.
+Use the same map ID on every line. The parser accepts decimal points and commas and supports both `/way` and `/waypoint`. In the **Order** tab, drag the waypoint handles or use the move buttons to reorder the route. The **Text** tab, map preview, and next export use the updated order.
 
-## Build und Entwicklung
+The export includes the route name and coordinates in waypoint order. The preview shows waypoint labels. Paste the `!FP1!` string into the addon's **Import** feature. The format uses CBOR byte strings, raw DEFLATE, and Base64.
 
-`RouteStudio.slnx` enthält die eigenständige Blazor-WebAssembly-App in `RouteStudio/` und die CLI in `MapConverter/`. Die Befehle verwenden PowerShell 7 im Projektverzeichnis.
+## Build and development
+
+`RouteStudio.slnx` contains the standalone Blazor WebAssembly app in `RouteStudio/` and the CLI in `MapConverter/`. Run the commands from the repository root in PowerShell 7.
 
 ```powershell
 dotnet --version
@@ -23,11 +25,11 @@ dotnet build RouteStudio.slnx -c Release
 dotnet run --project RouteStudio/SCFarmingPathsConverter.csproj
 ```
 
-`global.json` setzt das SDK auf 11.0.100. Für eine Vorschau mit Spielkarten das kompakte Kartenpaket über den unten beschriebenen statischen Build einbinden.
+`global.json` pins the SDK to 11.0.100. To preview game maps locally, include the compact map pack when publishing the static site as described below.
 
-## Retail-Karten erzeugen
+## Generate Retail maps
 
-Die CLI liest Build-spezifische Wago-Tools-Exporte und löst die Texturen über CASC-FileDataIDs auf. Für den Windows-Build von [CascLib](https://github.com/ladislav-zezula/CascLib) werden CMake und Visual Studio 2026 mit C++-Tools vorausgesetzt. Die DLL muss dieselbe Architektur wie der .NET-Prozess haben.
+The CLI reads build-specific Wago Tools exports and resolves textures through CASC FileDataIDs. Building CascLib on Windows requires CMake and Visual Studio 2026 with the C++ tools installed. The DLL and the .NET process must use the same architecture. [CascLib](https://github.com/ladislav-zezula/CascLib)
 
 ```powershell
 $build = '12.1.5.70961'
@@ -45,21 +47,21 @@ dotnet run --project MapConverter -c Release --no-build -- retail --build $build
 dotnet run --project MapConverter -c Release --no-build -- retail --build $build --db2 ".map-work/db2-$build" --wow $wow --casc-lib $casc --ids 2437,291,997,179,55 --out .map-work/demo
 ```
 
-Falls `cmake` nicht im PATH liegt, kann die mit Visual Studio installierte `cmake.exe` verwendet werden. `fetch-db2` speichert `UiMap`, `UiMapXMapArt`, `UiMapArt`, `UiMapArtStyleLayer`, `UiMapArtTile`, `WorldMapOverlay` und `WorldMapOverlayTile`. Jede DB2-Version bekommt ein eigenes Verzeichnis. Die CLI gleicht den ausgewählten Build mit `build.txt` und bei CASC mit dem aktiven Produkt `wow` in `.build.info` ab. CASC verwendet die verfügbaren Texturen des installierten Clients. Die erzeugte Zul’Aman-Karte enthält deutsche Ortsnamen.
+If `cmake` is missing from `PATH`, use the `cmake.exe` installed with Visual Studio. `fetch-db2` downloads `UiMap`, `UiMapXMapArt`, `UiMapArt`, `UiMapArtStyleLayer`, `UiMapArtTile`, `WorldMapOverlay`, and `WorldMapOverlayTile`. Store each DB2 version in a separate directory. The CLI checks the requested build against `build.txt` and, for CASC, against the active `wow` product in `.build.info`. CASC uses the textures available in the installed client. The Zul’Aman map generated for the example contains German place names.
 
-Mit `--remote` lädt die CLI fehlende Dateien für den angegebenen Build über die Wago-Tools-CASC-Schnittstelle. Ohne `--wow` und `--casc-lib` arbeitet sie ausschließlich mit Wago Tools. Ein kleiner Lauf prüft die Quelle, ohne einen vollständigen Import per HTTP auszulösen.
+Use `--remote` to fetch missing files for the requested build through the Wago Tools CASC endpoint. If you omit `--wow` and `--casc-lib`, the CLI uses Wago Tools for all files. Run a single-map import to check the remote source before importing the full catalog over HTTP.
 
 ```powershell
 dotnet run --project MapConverter -c Release --no-build -- retail --build $build --db2 ".map-work/db2-$build" --remote --ids 291 --out .map-work/remote-floor
 ```
 
-`maps.json` ist nach UiMapID indiziert. Bezugspunkt ist immer die linke obere Ecke der unbeschnittenen Kartenfläche. Rasterdaten werden anhand der Layerabmessungen, Zeilen und Spalten zusammengesetzt. Die statische Ansicht legt unbedingte Erkundungstexturen anhand ihrer aufgezeichneten Offsets darüber. Transparenz bleibt erhalten. Dateireferenzen mit FileDataID 0 sind leere Kacheln. Bedingte und reine Mouseover-Overlays hängen vom Spielzustand ab und sind in der statischen Karte nicht enthalten. Die Grundphase (0) hat Vorrang, danach werden Phasen-ID, Art-ID und Layer aufsteigend sortiert. Mehrere Phasen dürfen dieselbe Bilddatei verwenden.
+`maps.json` is indexed by UiMapID. The coordinate origin is the upper-left corner of the full, uncropped map area. The renderer assembles raster tiles using the layer dimensions, rows, and columns. It then places unconditional exploration textures at their recorded offsets and preserves transparency. A FileDataID of 0 represents an empty tile. Conditional and mouseover-only overlays depend on game state, so the static map omits them. The base phase (0) comes first, followed by ascending phase ID, art ID, and layer. Multiple phases can reference the same image file.
 
-`report.json` zählt die betrachteten UiMapIDs, IDs mit verknüpften Bilddaten, gerenderte IDs, IDs ohne Bilddaten und Fehler pro Art und Layer. Warnungen dokumentieren unter anderem fehlende Layerdefinitionen und kleinere Kacheln an ihrer vorgesehenen Position. Der Batch kann mit demselben Ausgabeverzeichnis fortgesetzt werden. Fertige PNGs und ihre Prüfprotokolle in `state/` werden wiederverwendet, Wago-Downloads liegen standardmäßig in `.map-work/cache/`. Exitcode 2 kennzeichnet fehlgeschlagene Karten oder Varianten bei geschriebenem Teilkatalog. Die Veröffentlichung kopiert ausschließlich Bilder, die der aktuelle Katalog referenziert.
+`report.json` counts UiMapIDs inspected, IDs with linked map art, IDs rendered, IDs without map art, and errors by art and layer. Warnings include missing layer definitions and smaller tiles placed at their recorded positions. To resume a batch, reuse the same output directory. The CLI reuses completed PNGs and their verification records in `state/` and stores Wago downloads in `.map-work/cache/` by default. Exit code 2 means the CLI wrote a partial catalog after one or more maps or variants failed. Publishing copies only the images referenced by the current catalog.
 
-### Offline-Import
+### Offline import
 
-Für bereits zusammengesetzte Karten, etwa aus vorab exportierten Spieltexturen, kann ein lokales Manifest importiert werden. Pro Phase oder Layer kann eine Zeile angegeben werden. `file` ist relativ zum Manifest. Eine Zeile ohne `file` liefert einen Katalogeintrag für das Raster. Rasterdateien (PNG, JPEG, WebP) werden in PNG konvertiert. Selbständige, statische SVGs mit passenden Kartenproportionen werden bytegenau übernommen.
+Use a local manifest to import assembled maps, such as maps built from previously exported game textures. Add one entry per phase or layer. The `file` path is relative to the manifest. Omit `file` to create an entry that uses the coordinate grid. The CLI converts PNG, JPEG, and WebP input to PNG and copies self-contained static SVGs with the correct map proportions byte for byte.
 
 ```json
 {
@@ -72,7 +74,7 @@ Für bereits zusammengesetzte Karten, etwa aus vorab exportierten Spieltexturen,
       "file": "zulaman.png",
       "width": 3840,
       "height": 2560,
-      "source": "Blizzard Retail 12.1.5.70961, vollständiger Export",
+      "source": "Blizzard Retail 12.1.5.70961, full export",
       "phaseId": 0,
       "artId": 1963,
       "layer": 0
@@ -86,25 +88,25 @@ Für bereits zusammengesetzte Karten, etwa aus vorab exportierten Spieltexturen,
 dotnet run --project MapConverter -c Release --no-build -- offline --build $build --manifest .map-work/preexport/manifest.json --out .map-work/offline
 ```
 
-### Ergebnis für 12.1.5.70961
+### Results for 12.1.5.70961
 
-Der vollständige lokale Lauf las 85.199 Texturen aus CASC. Von 1.967 UiMapIDs haben 1.939 verknüpfte Kartenbilder und wurden gerendert. 28 haben keine verknüpfte UI-Karte. Das sind 1.765 eindeutige PNGs und **4.316.154.132 Bytes** einschließlich `maps.json`. Der Bericht enthält keine fehlgeschlagenen deklarierten Layer und zwölf Warnungen. Elf Texturen in den Karten #179, #1804, #1888 und #2016 sind kleiner als ihre DB2-Rechtecke. #1550 hat außerdem Kacheldaten für einen Layer ohne zugehörige Layerabmessungen. `BkgAtlasID` bei #2252 verweist auf eine Adventure-Map-Hintergrundkachel. Die 28 IDs ohne Kartenbild enthalten #2252. Die referenzierten Retail-Texturen waren BLP-Rasterdaten. Der SVG-Pfad wurde mit einer separaten Vektordatei geprüft.
+The full local run read 85,199 textures from CASC. Of 1,967 UiMapIDs, 1,939 had linked map images and rendered successfully. The remaining 28 had no linked UI map. The output contained 1,765 unique PNGs and totaled **4,316,154,132 bytes** including `maps.json`. The report recorded zero failed declared layers and 12 warnings. Eleven textures in maps #179, #1804, #1888, and #2016 were smaller than their DB2 rectangles. Map #1550 also had tile data for a layer with missing dimensions. The `BkgAtlasID` for #2252 points to an Adventure Map background tile. Map #2252 was one of the 28 without map images. The referenced Retail textures were BLP raster data. SVG support was verified with a separate vector file.
 
-Im statischen Build geprüft wurden Zul’Aman #2437 mit der Beispielroute, The Deadmines #291 als Dungeon-Ebene, #55 als Mikrokarte und #997 mit Raster. Die drei Beispielkoordinaten sind im Zul’Aman-Datensatz belegt. [Wowhead · Skullcrusher Harak](https://www.wowhead.com/npc=242025/skullcrusher-harak)
+The static build was tested with the Zul’Aman example route (#2437), a dungeon floor in The Deadmines (#291), a micro map (#55), and the coordinate grid (#997). The Zul’Aman data confirms all three example coordinates. [Wowhead · Skullcrusher Harak](https://www.wowhead.com/npc=242025/skullcrusher-harak)
 
-## Kompaktes Kartenpaket erzeugen
+## Generate a compact map pack
 
-`pages-pack` verarbeitet den Katalog und die zusammengesetzten Bilder aus dem lokalen CASC-Import. Die längste Kante wird auf 624 Pixel begrenzt. Das Seitenverhältnis bleibt bis auf die Rundung auf ganze Pixel erhalten. Die PNGs behalten Transparenz und den vollständigen Kartenbereich. SVGs werden unverändert übernommen. Der Katalog behält seine UiMapIDs, Ebenen und Phasen und erhält die neuen Bildabmessungen. Die Route verwendet weiterhin Koordinaten bezogen auf die vollständige Karte.
+`pages-pack` takes the catalog and assembled images from the local CASC import and caps the longest edge at 624 pixels. It preserves the aspect ratio up to whole-pixel rounding. PNGs retain transparency and the full map area. SVGs are copied as-is. The catalog keeps its UiMapIDs, layers, and phases and records the new image dimensions. Route coordinates still refer to the full map area.
 
 ```powershell
 dotnet run --project MapConverter -c Release --no-build -- pages-pack --build $build --input ".map-work/retail-$build" --out ".map-work/pages-pack-624-$build" --max-edge 624 --jobs 8 --zip .map-work/route-studio-maps.zip
 ```
 
-`pack-report.json` enthält die Größe der Bilder und des Katalogs. Der ZIP-Export enthält die Dateien, die Pages benötigt. `--max-edge` kann für andere Builds angepasst werden. Für einen neuen Kartenimport und eine andere Zielgröße eignen sich eigene Ausgabeverzeichnisse.
+`pack-report.json` records the size of the images and catalog. The ZIP archive contains the files needed by GitHub Pages. Adjust `--max-edge` for other builds as needed. Use separate output directories for new map imports or different target sizes.
 
-Das kompakte Paket für 12.1.5.70961 enthält 1.765 PNGs für 1.939 UiMapIDs. Es belegt 929.650.895 Bytes einschließlich Katalog. Der vollständige getestete Pages-Build belegt 948.376.263 Bytes.
+The compact pack for 12.1.5.70961 contains 1,765 PNGs for 1,939 UiMapIDs. It totals 929,650,895 bytes including the catalog. The complete Pages build tested with this pack totaled 948,376,263 bytes.
 
-## Statisch veröffentlichen
+## Publish the static site
 
 ```powershell
 pwsh -NoProfile -File scripts/Publish-RouteStudio.ps1 -Output publish/subpath -BasePath /SCFarmingPathsConverter/ -MapPack ".map-work/pages-pack-624-$build" -Pages
@@ -113,25 +115,25 @@ Copy-Item -LiteralPath publish/subpath/wwwroot -Destination publish/serve/SCFarm
 python -m http.server 8080 --bind 127.0.0.1 --directory publish/serve
 ```
 
-Danach `http://127.0.0.1:8080/SCFarmingPathsConverter/` öffnen. Für Root-Hosting `-BasePath /` verwenden. Der Browser lädt das Bild der gewählten UiMapID und Phase vom selben Host. Ein separates Kartenhosting oder ein Abruf von Wago Tools zur Laufzeit ist nicht erforderlich.
+Open <http://127.0.0.1:8080/SCFarmingPathsConverter/>. Use `-BasePath /` when hosting at the root. The browser loads the image for the selected UiMapID and phase from the same host. The static site bundles its maps and works without runtime requests to Wago Tools.
 
 ### GitHub Pages
 
-1. Im Repository unter **Settings → Pages → Build and deployment** die Quelle **GitHub Actions** auswählen.
-2. Wenn die Veröffentlichung des Kartenmaterials freigegeben ist, das ZIP als Release-Anhang namens `route-studio-maps.zip` im Repository bereitstellen. Als Release-Tag lässt sich zum Beispiel `retail-12.1.5.70961-maps` verwenden.
-3. **Actions → Deploy Route Studio to GitHub Pages → Run workflow** öffnen und den Release-Tag bei `map_pack_release` angeben.
+1. In the repository, open **Settings → Pages → Build and deployment** and select **GitHub Actions** as the source.
+2. Once the map assets are approved for publication, upload the ZIP to the repository as a release asset named `route-studio-maps.zip`. For example, use the release tag `retail-12.1.5.70961-maps`.
+3. Open **Actions → Deploy Route Studio to GitHub Pages → Run workflow** and enter the release tag in `map_pack_release`.
 
-Die Befehle für ein mit dem Repository verbundenes GitHub CLI lauten
+With GitHub CLI configured for this repository, use the following commands.
 
 ```powershell
 gh release create retail-12.1.5.70961-maps .map-work/route-studio-maps.zip --title "Retail 12.1.5.70961 map pack" --notes "Compact PNG map pack for Route Studio."
 gh workflow run pages.yml -f map_pack_release=retail-12.1.5.70961-maps
 ```
 
-Der Workflow verwendet den Hostingpfad aus `actions/configure-pages` und prüft die Größe des entpackten Sites einschließlich Blazor-Dateien gegen die Pages-Grenze von 1 GB. Ein Release-Anhang vermeidet große Binärdateien im Git-Verlauf. [GitHub Pages · Workflow](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages) · [GitHub Pages · Limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) · [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases)
+The workflow uses the hosting path supplied by `actions/configure-pages` and checks the size of the unpacked site, including the Blazor files, against the GitHub Pages 1 GB limit. Storing the map pack as a release asset keeps large binary files out of Git history. [GitHub Pages workflow](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages) · [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) · [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases)
 
-## Herkunft und Veröffentlichung der Karten
+## Map sources and publication
 
-Das Kartenmaterial stammt aus dem Blizzard-Retail-Client. Wago Tools stellt die Tabellen und bei Bedarf Texturen anhand von FileDataIDs bereit. Das BLP-Format und die Platzierung der Spieltexturen wurden anhand von wow.export und dem veröffentlichten WoW-UI-Code nachvollzogen. Separat importierte Karten führen ihre Herkunft im Katalog. [wow.export · BLP-Decoder](https://github.com/Marlamin/wow.export/blob/caf2bb0006930e151cd3810fba0f7d55e2e4b562/src/js/casc/blp.js) · [WoW-UI · Kartenlayer](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_MapCanvas/Blizzard_MapCanvasDetailLayer.lua)
+The map assets come from Blizzard's Retail client. Wago Tools provides the tables and serves textures by FileDataID on request. The implementation follows wow.export and the published WoW UI source for the BLP format and tile placement. The catalog records the source of separately imported maps. [wow.export BLP decoder](https://github.com/Marlamin/wow.export/blob/caf2bb0006930e151cd3810fba0f7d55e2e4b562/src/js/casc/blp.js) · [WoW UI map layer](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_MapCanvas/Blizzard_MapCanvasDetailLayer.lua)
 
-World of Warcraft® und das Kartenmaterial gehören Blizzard Entertainment bzw. den jeweiligen Rechteinhabern. Die technische Verfügbarkeit über Spielclient oder Drittanbieter erteilt keine Genehmigung zur öffentlichen Weiterverbreitung. Der Repository-Betreiber prüft die anwendbaren Bedingungen und erforderlichen Rechte vor einer Veröffentlichung von Karten, einschließlich über einen separaten Host. Generierte Karten bleiben standardmäßig in den ignorierten lokalen Ausgabeverzeichnissen. [Blizzard · Endnutzervereinbarung](https://www.blizzard.com/en-gb/legal/08b946df-660a-40e4-a072-1fbde65173b1/blizzard-end-user-license-agreement) · [Blizzard · Fansite-FAQ](https://www.blizzard.com/de-de/legal/28d5ebbf-c245-4408-8ba9-043dd5f056bf/faq-uber-rechtliches)
+World of Warcraft® and its map assets belong to Blizzard Entertainment or their respective rights holders. Access through the game client or a third party does not grant permission to redistribute the assets publicly. The repository maintainer verifies applicable terms and permissions before publishing maps, including on a separate host. Generated maps stay in local output directories ignored by Git by default. [Blizzard End User License Agreement](https://www.blizzard.com/en-gb/legal/08b946df-660a-40e4-a072-1fbde65173b1/blizzard-end-user-license-agreement) · [Blizzard Legal FAQ](https://www.blizzard.com/en-sg/legal/c1ae32ac-7ff9-4ac3-a03b-fc04b8697010/blizzard-legal-faq)

@@ -1,4 +1,5 @@
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <header class="topbar">
     <div class="shell nav">
@@ -26,13 +27,52 @@
     </dl>
 
     <div class="workspace">
-        <section class="panel editor" id="editor" aria-labelledby="editor-heading">
+        <section class="panel editor" id="editor" aria-labelledby="editor-heading" @ref="_editor">
             <div class="panel-heading">
                 <h2 id="editor-heading">@Text["Waypoints"]</h2>
                 <button class="button secondary small" @onclick="LoadExample">@Text["LoadExample"]</button>
             </div>
-            <label for="waypoints">TomTom / Wowhead</label>
-            <textarea id="waypoints" spellcheck="false" aria-describedby="validation" aria-invalid="@(_validation is not null ? "true" : "false")" @bind:get="_input" @bind:set="SetInput" @bind:event="oninput" placeholder="/way #2437 34.39 33.04 Necrohexxer Raz'ka"></textarea>
+            <div class="waypoint-tabs" role="tablist" aria-labelledby="editor-heading">
+                <button type="button" id="text-tab" role="tab" aria-controls="text-panel" aria-selected="@(!_orderTab ? "true" : "false")"
+                        tabindex="@(_orderTab ? -1 : 0)" @onclick="() => _orderTab = false">@Text["WaypointTextTab"]</button>
+                <button type="button" id="order-tab" role="tab" aria-controls="order-panel" aria-selected="@(_orderTab ? "true" : "false")"
+                        tabindex="@(_orderTab ? 0 : -1)" @onclick="() => _orderTab = true">@Text["WaypointOrderTab"]</button>
+            </div>
+            <div id="text-panel" role="tabpanel" aria-labelledby="text-tab" hidden="@_orderTab">
+                <label for="waypoints">TomTom / Wowhead</label>
+                <textarea id="waypoints" spellcheck="false" aria-describedby="validation" aria-invalid="@(_validation is not null ? "true" : "false")" @bind:get="_input" @bind:set="SetInput" @bind:event="oninput" placeholder="/way #2437 34.39 33.04 Necrohexxer Raz'ka"></textarea>
+            </div>
+            <div id="order-panel" role="tabpanel" aria-labelledby="order-tab" hidden="@(!_orderTab)">
+                @if (_orderTab)
+                {
+                    <p class="field-note" id="waypoint-order-hint">@Text[OrderHint]</p>
+                }
+                <ol class="waypoint-order" data-revision="@_inputVersion" aria-describedby="waypoint-order-hint" hidden="@(_points.Count == 0)">
+                    @if (_orderTab)
+                    {
+                        @for (var i = 0; i < _points.Count; i++)
+                        {
+                            var index = i;
+                            var point = _points[index];
+                            var label = point.Name.Length == 0 ? Text.Format("Point", index + 1) : point.Name;
+                            <li class="waypoint-row" data-index="@index">
+                                @if (_points.Count > 1)
+                                {
+                                    <span class="drag-handle" data-drag-handle aria-hidden="true">⠿</span>
+                                }
+                                <span class="waypoint-detail">
+                                    <strong>@label</strong>
+                                    <small>@(string.Create(Text.Culture, $"X {point.X} · Y {point.Y}"))</small>
+                                </span>
+                                <button type="button" class="button secondary small" data-move="-1" disabled="@(index == 0)"
+                                        aria-label="@Text.Format("MoveWaypointUp", label)" @onclick="() => MoveWithButton(index, -1)">↑</button>
+                                <button type="button" class="button secondary small" data-move="1" disabled="@(index == _points.Count - 1)"
+                                        aria-label="@Text.Format("MoveWaypointDown", label)" @onclick="() => MoveWithButton(index, 1)">↓</button>
+                            </li>
+                        }
+                    }
+                </ol>
+            </div>
             <p id="validation" class="field-note @(_validation is null ? "valid" : "error")" role="status">@(_validation ?? (_points.Count == 0 ? Text["WaypointHint"] : Text.Format(_points.Count == 1 ? "ValidWaypoint" : "ValidWaypoints", _points.Count)))</p>
             <label for="route-name">@Text["RouteName"]</label>
             <input id="route-name" type="text" @bind:get="_name" @bind:set="SetName" @bind:event="oninput">
@@ -67,9 +107,21 @@
     private string? _feedbackKey;
     private bool _exportError;
     private bool _copied;
+    private bool _orderTab;
+    private int _inputVersion;
+    private ElementReference _editor;
     private ElementReference _exportField;
+    private IJSObjectReference? _orderModule;
+    private DotNetObjectReference<App>? _editorReference;
+    private (int Index, int Direction)? _moveFocus;
     private IReadOnlyList<Waypoint> _points = [];
     private int? MapId => _points.Count == 0 ? null : _points[0].MapId;
+    private string OrderHint => _validation is not null ? "OrderFixText" : _points.Count switch
+    {
+        0 => "OrderEmpty",
+        1 => "OrderSingle",
+        _ => "OrderInstructions"
+    };
 
     protected override void OnInitialized() => LoadExample();
 
@@ -86,8 +138,63 @@
     private void SetInput(string? value)
     {
         _input = value ?? "";
+        _inputVersion++;
         InvalidateExport();
         ParseInput();
+    }
+
+    [JSInvokable]
+    public Task MoveDroppedWaypoint(int from, int to, int revision) => InvokeAsync(() =>
+    {
+        if (_orderTab && revision == _inputVersion && MoveWaypoint(from, to)) StateHasChanged();
+    });
+
+    private void MoveWithButton(int from, int direction)
+    {
+        int to = from + direction;
+        if (MoveWaypoint(from, to)) _moveFocus = (to, direction);
+    }
+
+    private bool MoveWaypoint(int from, int to)
+    {
+        if (from == to || (uint)from >= (uint)_points.Count || (uint)to >= (uint)_points.Count) return false;
+
+        SetInput(WaypointParser.MoveLine(_input, from, to));
+        return true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                _orderModule = await JS.InvokeAsync<IJSObjectReference>("import", "./waypoint-order.js");
+                _editorReference = DotNetObjectReference.Create(this);
+                await _orderModule.InvokeVoidAsync("attach", _editor, _editorReference);
+            }
+
+            if (_moveFocus is { } focus && _orderModule is not null)
+            {
+                _moveFocus = null;
+                await _orderModule.InvokeVoidAsync("focusMove", _editor, focus.Index, focus.Direction);
+            }
+        }
+        catch (JSException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_orderModule is not null)
+            {
+                await _orderModule.InvokeVoidAsync("detach", _editor);
+                await _orderModule.DisposeAsync();
+            }
+        }
+        catch (JSException) { }
+        finally { _editorReference?.Dispose(); }
     }
 
     private void ParseInput()

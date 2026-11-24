@@ -80,6 +80,29 @@ textarea { display: block; resize: vertical; min-height: 8.8rem; font: .82rem/1.
 .button.quiet { color: var(--muted); background: transparent; }
 .button.small { font-size: .73rem; min-height: 2rem; padding: .35rem .65rem; white-space: nowrap; }
 .button:disabled { opacity: .45; cursor: default; }
+.waypoint-tabs { display: flex; gap: .25rem; border-bottom: 1px solid var(--line); margin-bottom: .7rem; }
+.waypoint-tabs button {
+    background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted);
+    cursor: pointer; padding: .45rem .7rem; font-size: .82rem; font-weight: 650;
+}
+.waypoint-tabs button[aria-selected="true"] { border-bottom-color: var(--accent); color: var(--accent); }
+.waypoint-order {
+    max-height: 22rem; overflow-y: auto; list-style: none; margin: 0; padding: 0;
+    border: 1px solid var(--line); border-radius: 7px; background: var(--inset);
+}
+.waypoint-row { display: flex; gap: .35rem; align-items: center; padding: .4rem; }
+.waypoint-row + .waypoint-row { border-top: 1px solid var(--line); }
+.waypoint-row.dragging { opacity: .5; }
+.waypoint-row.drop-before { box-shadow: inset 0 2px var(--accent); }
+.waypoint-row.drop-after { box-shadow: inset 0 -2px var(--accent); }
+.drag-handle {
+    flex: 0 0 auto; display: grid; place-items: center; min-width: 2rem; min-height: 2.25rem;
+    color: var(--accent); font-size: 1.15rem; cursor: grab; touch-action: none; user-select: none;
+}
+.waypoint-order:has(.dragging) .drag-handle { cursor: grabbing; }
+.waypoint-detail { flex: 1; min-width: 0; font-size: .8rem; overflow-wrap: anywhere; }
+.waypoint-detail small { display: block; color: var(--muted); margin-top: .15rem; }
+.waypoint-row .button { flex-shrink: 0; font-size: .9rem; }
 .export { margin-top: 1.15rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 .export .panel-heading { align-items: center; margin-bottom: .45rem; }
 .export label, .export .field-note { margin-bottom: 0; }
